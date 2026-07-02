@@ -1,218 +1,3422 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[codz]
-*$py.class
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+🧬 Євалюция Ббезянок
+| 16+ |
+"""
 
-# C extensions
-*.so
+import json
+import os
+import random
+import socket
+import sys
+import threading
+import time
+from enum import Enum
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
-# PyInstaller
-#   Usually these files are written by a python script from a template
-#   before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
+# ═══════════════════════════════════════════════
+# I. ПЕРЕЧИСЛЕННЯ
+# ═══════════════════════════════════════════════
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+class Gender(Enum):
+    MALE = "♂ Чоловік"
+    FEMALE = "♀ Жінка"
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py.cover
-.hypothesis/
-.pytest_cache/
-cover/
+class Season(Enum):
+    WET = "Сезон дощів 🌧️"
+    DRY = "Сухий сезон ☀️"
 
-# Translations
-*.mo
-*.pot
+class Biome(Enum):
+    JUNGLE = "Джунглі 🌴"
+    SAVANNA = "Савана 🦒"
+    WOODLAND = "Рідколісся 🌳"
+    RIVER = "Річка 🏞️"
 
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
+class Skill(Enum):
+    TOOLMAKING = "Виготовлення знарядь"
+    HUNTING = "Полювання"
+    GATHERING = "Збирання"
+    DODGE = "Ухилення"
+    CLIMBING = "Лазіння"
+    SWIMMING = "Плавання"
+    COMMUNICATION = "Комунікація"
+    TRACKING = "Слідкування"
 
-# Flask stuff:
-instance/
-.webassets-cache
+class Injury(Enum):
+    BROKEN_LEG = "Перелом ноги 🦴"
+    BROKEN_ARM = "Перелом руки 🦴"
+    INFECTED_WOUND = "Інфікована рана 🩹"
+    POISONED = "Отруєння ☠️"
+    FEVER = "Лихоманка 🌡️"
+    BITE = "Укус хижака 🦷"
+    CUT = "Глибока рана 🩸"
+    
+    @property
+    def severity(self):
+        return {
+            self.BROKEN_LEG: 3, self.BROKEN_ARM: 2,
+            self.INFECTED_WOUND: 3, self.POISONED: 4,
+            self.FEVER: 2, self.BITE: 1, self.CUT: 2
+        }[self]
 
-# Scrapy stuff:
-.scrapy
+class Species(Enum):
+    PROCONSUL = ("Проконсул 🐒", "Деревна мавпа", -10_000_000)
+    ARDIPITHECUS = ("Ардипітек 🦧", "Перше прямоходіння", -7_500_000)
+    AUSTRALOPITHECUS = ("Австралопітек 🦍", "Освоєння савани", -5_000_000)
+    HOMO_HABILIS = ("Людина вміла 🔨", "Перші кам'яні знаряддя", -3_000_000)
+    HOMO_ERECTUS = ("Людина прямоходяча 🔥", "Підкорення вогню", -1_800_000)
+    HOMO_HEIDELBERGENSIS = ("Гейдельберзька ⚔️", "Складні знаряддя", -800_000)
+    HOMO_SAPIENS = ("Людина розумна 🧠", "Народження культури", -300_000)
+    
+    def __init__(self, display, milestone, year):
+        self.display = display
+        self.milestone = milestone
+        self.year_bp = year
 
-# Sphinx documentation
-docs/_build/
+class GameMode(Enum):
+    TUTORIAL = "Новачок 🐣"
+    SURVIVAL = "Виживання ☠️"
+    CUSTOM = "Користувацький ⚙️"
+    ONLINE = "Онлайн 🌐"
 
-# PyBuilder
-.pybuilder/
-target/
+# ═══════════════════════════════════════════════
+# II. ЕВОЛЮЦІЙНІ РИСИ
+# ═══════════════════════════════════════════════
 
-# Jupyter Notebook
-.ipynb_checkpoints
+class EvolutionTrait:
+    def __init__(self, tid, name, description, category):
+        self.id = tid
+        self.name = name
+        self.description = description
+        self.category = category
+        self.progress = 0.0
+        self.unlocked = False
 
-# IPython
-profile_default/
-ipython_config.py
+class EvolutionTree:
+    def __init__(self):
+        self.traits = {}
+        self._init()
+    
+    def _init(self):
+        data = [
+            ("grip","Міцний хват 🖐️","Утримувати предмети","motor"),
+            ("precision","Точність 🎯","Метання","motor"),
+            ("balance","Рівновага 🧘","Ходьба по гілках","motor"),
+            ("dexterity","Спритність 🤲","Виготовлення","motor"),
+            ("vision","Гострий зір 👁️","Бачити хижаків","sensory"),
+            ("hearing","Чуйний слух 👂","Чути небезпеку","sensory"),
+            ("smell","Нюх 👃","Відчувати воду","sensory"),
+            ("peripheral","Периферія 👀","Широкий огляд","sensory"),
+            ("empathy","Емпатія 💕","Розуміння сородичів","social"),
+            ("speech","Мова 🗣️","Звукові сигнали","social"),
+            ("cooperation","Кооперація 🤝","Спільні дії","social"),
+            ("teaching","Навчання 📚","Передача навичок","social"),
+            ("memory","Пам'ять 🧠","Запам'ятовувати маршрути","cognitive"),
+            ("planning","Планування 📋","Дії наперед","cognitive"),
+            ("curiosity","Цікавість 🔍","Потяг до нового","cognitive"),
+            ("adaptation","Адаптація 🌍","Звикання","cognitive"),
+            ("bipedalism","Прямоходіння 🚶","Економія енергії","physical"),
+            ("thumb","Великий палець 🦴","Маніпуляції","physical"),
+            ("sweat","Потові залози 💦","Охолодження","physical"),
+            ("big_brain","Зріст мозку 🧠","+3 до інтелекту","physical"),
+        ]
+        for tid, nm, desc, cat in data:
+            self.traits[tid] = EvolutionTrait(tid, nm, desc, cat)
+    
+    def advance(self, category, amount=0.05):
+        cand = [t for t in self.traits.values() if not t.unlocked and t.category == category]
+        if not cand:
+            return None
+        ch = random.choice(cand)
+        ch.progress = min(1.0, ch.progress + amount)
+        if ch.progress >= 1.0 and not ch.unlocked:
+            ch.unlocked = True
+            return ch.id
+        return None
+    
+    def unlocked_count(self):
+        return sum(1 for t in self.traits.values() if t.unlocked)
+    
+    def total(self):
+        return len(self.traits)
+    
+    def progress(self):
+        total = self.total()
+        if total == 0: return 0.0
+        unlocked = self.unlocked_count()
+        partial = sum(t.progress for t in self.traits.values() if not t.unlocked)
+        return (unlocked + partial) / total * 100
+    
+    def summary(self):
+        lines = []
+        cats = {
+            "motor":"Моторика","sensory":"Відчуття",
+            "social":"Соціальні","cognitive":"Когнітивні",
+            "physical":"Фізичні"
+        }
+        for cid, cname in cats.items():
+            ct = [t for t in self.traits.values() if t.category == cid]
+            if not ct: continue
+            unl = sum(1 for t in ct if t.unlocked)
+            tot = len(ct)
+            prog = (unl + sum(t.progress for t in ct if not t.unlocked)) / tot * 100
+            fl = int(10 * prog / 100)
+            bar = "🧬" * fl + "░" * (10 - fl)
+            lines.append(f"  {cname}: [{bar}] {unl}/{tot} ({prog:.0f}%)")
+        return "\n".join(lines)
 
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
+# ═══════════════════════════════════════════════
+# III. HOMINID
+# ═══════════════════════════════════════════════
 
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-# Pipfile.lock
+class Hominid:
+    def __init__(self, name, age=None, gender=None, is_player=False):
+        self.name = name
+        self.gender = gender if gender else random.choice([Gender.MALE, Gender.FEMALE])
+        self.is_player = is_player
+        self.age = age if age is not None else random.randint(15, 35)
+        self.health = 100
+        self.energy = 100
+        self.hunger = 0
+        self.thirst = 0
+        self.fatigue = 0
+        self.alive = True
+        self.morale = 100
+        self.strength = random.randint(3, 7)
+        self.speed = random.randint(3, 7)
+        self.intelligence = random.randint(3, 7)
+        self.skills = {s: 0 for s in Skill}
+        self.brain = EvolutionTree()
+        self.injuries = []
+        self.role = None
+        self.experience = 0
+        self.children = 0
+        self.kills = 0
+        self.discoveries = 0
+        self.father_name = None
+        
+        self.pregnant = False
+        self.pregnancy_timer = 0
+        self.partner_name = None
+    
+    @property
+    def gender_symbol(self):
+        return "♂" if self.gender == Gender.MALE else "♀"
+    
+    @property
+    def age_group(self):
+        if self.age < 10: return "дитинча"
+        if self.age < 16: return "підліток"
+        if self.age < 35: return "дорослий"
+        if self.age < 50: return "літній"
+        return "старейшина"
+    
+    @property
+    def is_adult(self):
+        return self.age >= 16
+    
+    @property
+    def is_fertile(self):
+        if not self.is_adult: return False
+        if self.health < 40: return False
+        if self.energy < 30: return False
+        if self.pregnant: return False
+        return True
+    
+    @property
+    def eff_strength(self):
+        penalty = sum(i.severity for i in self.injuries) if self.injuries else 0
+        if self.pregnant: penalty += 2
+        return max(1, self.strength - penalty)
+    
+    @property
+    def eff_speed(self):
+        penalty = sum(i.severity for i in self.injuries) // 2 if self.injuries else 0
+        if self.pregnant: penalty += 3
+        return max(1, self.speed - penalty)
+    
+    def stats(self):
+        lines = [f"{self.gender_symbol} {self.name} ({self.age_group}), {self.age} років"]
+        lines.append(f"   ❤️ {self.health}/100 | ⚡ {self.energy}/100 | 😫 {self.fatigue}/100")
+        lines.append(f"   🍖{self.hunger}/100 💧{self.thirst}/100 🏅{self.morale}/100")
+        lines.append(f"   💪{self.eff_strength} 🏃{self.eff_speed} 🧠{self.intelligence}")
+        if self.pregnant:
+            lines.append(f"   🤰 Вагітна! Залишилось: {self.pregnancy_timer} ходів")
+        if self.injuries:
+            inj_str = ", ".join(f"{i.value}" for i in self.injuries)
+            lines.append(f"   🩺 Травми: {inj_str}")
+        if self.role:
+            lines.append(f"   🏅 Роль: {self.role}")
+        if self.brain.unlocked_count() > 0:
+            lines.append(f"   🧬 Нейрони: {self.brain.unlocked_count()}/{self.brain.total()}")
+        return "\n".join(lines)
+    
+    def age_one_year(self):
+        self.age += 1
+        if self.age > 60:
+            self.health -= random.randint(5, 15)
+        if self.age > 70:
+            self.health -= random.randint(10, 25)
+        if self.health <= 0:
+            self.alive = False
+    
+    def apply_penalties(self):
+        if self.hunger > 80:
+            self.health -= 2
+            self.energy -= 3
+        elif self.hunger > 50:
+            self.energy -= 1
+        if self.thirst > 80:
+            self.health -= 3
+            self.energy -= 4
+        elif self.thirst > 50:
+            self.energy -= 2
+        if self.energy <= 0:
+            self.health -= 5
+        if self.pregnant:
+            self.energy -= 2
+            self.hunger += 3
+            self.thirst += 2
+        if self.health <= 0:
+            self.alive = False
+    
+    def rest(self):
+        self.energy = min(100, self.energy + random.randint(15, 35))
+        self.hunger += random.randint(2, 6)
+        self.thirst += random.randint(2, 5)
+        self.fatigue = max(0, self.fatigue - random.randint(10, 25))
+        result = None
+        if self.injuries:
+            light = [i for i in self.injuries if i.severity <= 2]
+            if light and random.random() < 0.2:
+                healed = random.choice(light)
+                self.injuries.remove(healed)
+                self.health = min(100, self.health + 10)
+                result = f"🩹 {healed.value} зажила"
+        return result
+    
+    def eat(self, amt=30):
+        self.hunger = max(0, self.hunger - amt)
+        self.energy = min(100, self.energy + amt // 3)
+    
+    def drink(self):
+        self.thirst = max(0, self.thirst - 40)
+    
+    def take_damage(self, dmg, src=""):
+        self.health -= dmg
+        if self.pregnant and random.random() < 0.3:
+            self.pregnant = False
+            self.pregnancy_timer = 0
+            self.morale = max(0, self.morale - 30)
+            print(f"   💔 {self.name} втратила дитину через травму!")
+        if self.health <= 0:
+            self.alive = False
+            return f"💀 {self.name} загинув від {src}!"
+        return f"⚡ {self.name} отримав {dmg} урону від {src} (❤️{self.health})"
+    
+    def gain_exp(self, amt):
+        self.experience += amt
+        if self.experience >= 100 * (self.intelligence + 1):
+            self.intelligence += 1
+            self.experience = 0
+            self.morale = min(100, self.morale + 10)
+            return True
+        return False
 
-# UV
-#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-# uv.lock
+# ═══════════════════════════════════════════════
+# IV. СВІТ
+# ═══════════════════════════════════════════════
 
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-# poetry.lock
-# poetry.toml
+class World:
+    DESCS = {
+        Biome.JUNGLE: ["Густі джунглі","Ліани звисають","Вологий ліс"],
+        Biome.SAVANNA: ["Золота трава","Розпечене повітря","Висока трава"],
+        Biome.WOODLAND: ["Рідкі дерева","Прохолодний переліс","Гілки навісом"],
+        Biome.RIVER: ["Широка річка","Дзюрчання води","Риба плескається"],
+    }
+    HARVEST = {
+        Biome.JUNGLE: ("фрукти", 15, 30),
+        Biome.SAVANNA: ("коріння", 5, 20),
+        Biome.WOODLAND: ("гриби/ягоди", 8, 25),
+        Biome.RIVER: ("риба", 15, 35)
+    }
+    TRANSITIONS = {
+        Biome.JUNGLE: [Biome.WOODLAND, Biome.RIVER],
+        Biome.SAVANNA: [Biome.WOODLAND, Biome.RIVER],
+        Biome.WOODLAND: [Biome.JUNGLE, Biome.SAVANNA, Biome.RIVER],
+        Biome.RIVER: [Biome.JUNGLE, Biome.SAVANNA, Biome.WOODLAND],
+    }
+    
+    def __init__(self):
+        self.biome = Biome.JUNGLE
+        self.weather = "ясно"
+        self.time = "ранок"
+        self.day = 1
+        self.season = Season.WET
+        self.season_days = 0
+        self.survival_timer = 0
+        self.drought_timer = 0
+    
+    def describe(self):
+        desc = random.choice(self.DESCS[self.biome])
+        w = ""
+        t = f" Зараз {self.time}."
+        if self.weather == "дощ": w = " Мрячить дощ."
+        elif self.weather == "буря": w = " Буря!"
+        elif self.weather == "спека": w = " Спека."
+        return f"📍 {self.biome.value} | День {self.day} | {self.weather}{t}{w}\n🌍 {self.season.value}\n{desc}"
+    
+    def advance(self):
+        times = ["ранок","день","вечір","ніч"]
+        idx = times.index(self.time)
+        if idx < 3:
+            self.time = times[idx + 1]
+        else:
+            self.time = "ранок"
+            self.day += 1
+            self.weather = random.choice(["ясно","ясно","дощ","спека","буря"])
+        self.season_days += 0.5
+        if self.season_days >= 5:
+            self.season_days = 0
+            self.season = Season.WET if self.season == Season.DRY else Season.DRY
+            self.weather = "дощ" if self.season == Season.WET else "спека"
+            self.drought_timer = 0 if self.season == Season.WET else 5
+    
+    def forage_mod(self):
+        return 1.5 if self.season == Season.WET else 0.7
+    
+    def move_to(self, b):
+        if b in self.TRANSITIONS.get(self.biome, []):
+            self.biome = b
+            self.advance()
+            return True
+        return False
 
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
-#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
-# pdm.lock
-# pdm.toml
-.pdm-python
-.pdm-build/
+# ═══════════════════════════════════════════════
+# V. ЕВОЛЮЦІЯ
+# ═══════════════════════════════════════════════
 
-# pixi
-#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
-# pixi.lock
-#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
-#   in the .venv directory. It is recommended not to include this directory in version control.
-.pixi
+class EvolutionEngine:
+    def __init__(self, clan):
+        self.clan = clan
+        self.tree = EvolutionTree()
+        self.species = Species.PROCONSUL
+        self.points = 0
+        self.history = []
+        self.reqs = {
+            Species.PROCONSUL: (0, 2, 0, 0, [], 0),
+            Species.ARDIPITHECUS: (3, 3, 1, 0, ["bipedalism"], 0),
+            Species.AUSTRALOPITHECUS: (6, 4, 3, 0, ["bipedalism","sweat"], 3),
+            Species.HOMO_HABILIS: (9, 4, 5, 2, ["thumb","dexterity"], 5),
+            Species.HOMO_ERECTUS: (12, 5, 7, 3, ["speech","planning"], 8),
+            Species.HOMO_HEIDELBERGENSIS: (15, 6, 10, 4, ["cooperation","big_brain"], 12),
+            Species.HOMO_SAPIENS: (18, 8, 14, 5, ["memory","teaching","empathy"], 16),
+        }
+    
+    def check(self):
+        sp = list(Species)
+        idx = sp.index(self.species)
+        if idx >= len(sp) - 1:
+            return False, None, ["Максимум"]
+        nxt = sp[idx + 1]
+        data = self.reqs.get(nxt)
+        if not data: return False, None, ["Нема вимог"]
+        mn_tr, mn_cl, mn_gen, mn_tl, req_tr, req_disc = data
+        fail = []
+        if self.tree.unlocked_count() < mn_tr:
+            fail.append(f"Риси: {self.tree.unlocked_count()}/{mn_tr}")
+        alive = len([m for m in self.clan.members if m.alive])
+        if alive < mn_cl:
+            fail.append(f"Клан: {alive}/{mn_cl}")
+        if self.clan.generation < mn_gen:
+            fail.append(f"Покоління: {self.clan.generation}/{mn_gen}")
+        if self.clan.tool_level < mn_tl:
+            fail.append(f"Знаряддя: {self.clan.tool_level}/{mn_tl}")
+        for tid in req_tr:
+            t = self.tree.traits.get(tid)
+            if t and not t.unlocked:
+                fail.append(f"Риса: {t.name}")
+        if len(self.clan.discoveries) < req_disc:
+            fail.append(f"Відкриття: {len(self.clan.discoveries)}/{req_disc}")
+        ready = len(fail) == 0
+        return ready, nxt if ready else None, fail
+    
+    def leap(self):
+        ready, nxt, fail = self.check()
+        if not ready or not nxt:
+            return "НЕМОЖЛИВО", fail
+        old = self.species
+        self.species = nxt
+        for m in self.clan.members:
+            if m.alive:
+                m.health = min(100, m.health + 30)
+                m.energy = min(100, m.energy + 30)
+                m.morale = min(100, m.morale + 50)
+                m.injuries = []
+                sb = random.choice(list(Skill))
+                m.skills[sb] = min(10, m.skills[sb] + 2)
+        phys = [t for t in self.tree.traits.values() if t.category == "physical" and not t.unlocked]
+        if phys:
+            for t in random.sample(phys, min(2, len(phys))):
+                t.unlocked = True; t.progress = 1.0
+        if self.clan.tool_level < 5:
+            self.clan.tool_level = min(5, self.clan.tool_level + 1)
+        self.clan.current_year = nxt.year_bp
+        entry = f"⚡⚡⚡ {old.display} → {nxt.display} ⚡⚡⚡\n  🏆 {nxt.milestone}\n  📅 {abs(nxt.year_bp)} років до н.е."
+        self.history.append(entry)
+        self.clan.add_chronicle(f"⚡ ЕВОЛЮЦІЯ: {nxt.display}")
+        self.clan.generation += 1
+        self.points = 0
+        return entry, []
+    
+    def summary(self):
+        lines = ["📜 ІСТОРІЯ ЕВОЛЮЦІЇ", "=" * 50]
+        if not self.history: lines.append("  Еволюція не почата")
+        else:
+            for i, e in enumerate(self.history, 1): lines.append(f"  {i}. {e}")
+        lines.append("=" * 50)
+        lines.append(f"🔬 {self.species.display} | {self.species.milestone}")
+        return "\n".join(lines)
 
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
+# ═══════════════════════════════════════════════
+# VI. КЛАН
+# ═══════════════════════════════════════════════
 
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
+class Clan:
+    def __init__(self):
+        self.members = []
+        self.name = "Клан предків"
+        self.generation = 0
+        self.total_members = 0
+        self.total_deaths = 0
+        self.tool_level = 0
+        self.food_storage = 50
+        self.water_storage = 50
+        self.herbs_storage = 3
+        self.discoveries = []
+        self.chronicle = []
+        self.current_year = -10_000_000
+        self.materials = {}
+        self.crafted_items = {}
+        self.MALE_NAMES = ["Адам","Бо","Дар","Зук","Нок","Рук","Тум","Сол","Гор","Фі","Кай","Рон","Бек","Тор"]
+        self.FEMALE_NAMES = ["Айла","Кіра","Міра","Вії","Ло","Зара","Ніна","Тара","Сара","Ліа","Ріа","Дора"]
+    
+    @property
+    def player(self):
+        for m in self.members:
+            if m.is_player and m.alive: return m
+        return None
+    
+    @property
+    def alive_members(self):
+        return [m for m in self.members if m.alive]
+    
+    @property
+    def injured_members(self):
+        return [m for m in self.members if m.alive and m.injuries]
+    
+    @property
+    def fertile_members(self):
+        return [m for m in self.members if m.alive and m.is_fertile]
+    
+    @property
+    def pregnant_members(self):
+        return [m for m in self.members if m.alive and m.pregnant]
+    
+    @property
+    def male_members(self):
+        return [m for m in self.members if m.alive and m.gender == Gender.MALE]
+    
+    @property
+    def female_members(self):
+        return [m for m in self.members if m.alive and m.gender == Gender.FEMALE]
+    
+    def add_member(self, name, gender=None, age=None, is_player=False):
+        h = Hominid(name, age=age, gender=gender, is_player=is_player)
+        self.members.append(h)
+        self.total_members += 1
+        return h
+    
+    def add_chronicle(self, ev):
+        yr = f"Рік {abs(self.current_year // 1_000_000)} млн років до н.е."
+        self.chronicle.append(f"[{yr}] {ev}")
 
-# Redis
-*.rdb
-*.aof
-*.pid
+# ═══════════════════════════════════════════════
+# VII. ГРА
+# ═══════════════════════════════════════════════
 
-# RabbitMQ
-mnesia/
-rabbitmq/
-rabbitmq-data/
+class NetworkChatServer:
+    def __init__(self, host="127.0.0.1", port=5000, server_name="Ancestors"):
+        self.host = host
+        self.port = port
+        self.server_name = server_name
+        self.discovery_port = 5001
+        self.running = True
+        self.socket = None
+        self.discovery_socket = None
+        self.thread = None
+        self.discovery_thread = None
+        self.clients = []
+        self.lock = threading.Lock()
+        self.messages = []
 
-# ActiveMQ
-activemq-data/
+    def start(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.bind((self.host, self.port))
+        self.socket.listen(5)
+        self.thread = threading.Thread(target=self._accept_loop, daemon=True)
+        self.thread.start()
+        self.discovery_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.discovery_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.discovery_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        self.discovery_socket.bind(("0.0.0.0", self.discovery_port))
+        self.discovery_thread = threading.Thread(target=self._discovery_loop, daemon=True)
+        self.discovery_thread.start()
+        return True
 
-# SageMath parsed files
-*.sage.py
+    def stop(self):
+        self.running = False
+        try:
+            self.socket.close()
+        except Exception:
+            pass
+        try:
+            self.discovery_socket.close()
+        except Exception:
+            pass
 
-# Environments
-.env
-.envrc
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+    def _discovery_loop(self):
+        while self.running:
+            try:
+                data, addr = self.discovery_socket.recvfrom(1024)
+                if not data:
+                    continue
+                text = data.decode("utf-8", "ignore")
+                if text.strip() == "ANCESTORS_DISCOVER":
+                    payload = {
+                        "type": "server_info",
+                        "host": self.host,
+                        "port": self.port,
+                        "clan_name": self.server_name,
+                    }
+                    self.discovery_socket.sendto(json.dumps(payload).encode("utf-8"), addr)
+            except OSError:
+                break
+            except Exception:
+                continue
 
-# Spyder project settings
-.spyderproject
-.spyproject
+    def _accept_loop(self):
+        while self.running:
+            try:
+                conn, addr = self.socket.accept()
+            except OSError:
+                break
+            conn.settimeout(1.0)
+            with self.lock:
+                self.clients.append(conn)
+            threading.Thread(target=self._handle_client, args=(conn, addr), daemon=True).start()
 
-# Rope project settings
-.ropeproject
+    def _handle_client(self, conn, addr):
+        try:
+            self._send_payload(conn, {"type": "sync", "messages": self.messages[-20:]})
+            while self.running:
+                data = conn.recv(4096)
+                if not data:
+                    break
+                text = data.decode("utf-8", "ignore").strip()
+                if not text:
+                    continue
+                for line in text.splitlines():
+                    if not line:
+                        continue
+                    try:
+                        payload = json.loads(line)
+                    except Exception:
+                        continue
+                    if payload.get("type") == "join":
+                        self.broadcast({"type": "chat", "message": {"author": "Система", "text": f"{payload.get('author', 'Клан')} підключився до чату", "system": True}})
+                    elif payload.get("type") == "clan_status":
+                        self.broadcast(payload)
+                    elif payload.get("type") == "chat":
+                        msg = payload.get("message") or payload
+                        self.messages.append({
+                            "author": msg.get("author", "Система"),
+                            "text": msg.get("text", ""),
+                            "system": msg.get("system", False),
+                        })
+                        self.messages = self.messages[-20:]
+                        self.broadcast({"type": "chat", "message": self.messages[-1]})
+        except Exception:
+            pass
+        finally:
+            with self.lock:
+                self.clients = [c for c in self.clients if c is not conn]
+            try:
+                conn.close()
+            except Exception:
+                pass
 
-# mkdocs documentation
-/site
+    def broadcast(self, payload):
+        data = (json.dumps(payload, ensure_ascii=False) + "\n").encode("utf-8")
+        with self.lock:
+            dead = []
+            for conn in self.clients:
+                try:
+                    conn.sendall(data)
+                except Exception:
+                    dead.append(conn)
+            for conn in dead:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+            self.clients = [c for c in self.clients if c not in dead]
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+    def _send_payload(self, conn, payload):
+        conn.sendall((json.dumps(payload, ensure_ascii=False) + "\n").encode("utf-8"))
 
-# Pyre type checker
-.pyre/
 
-# pytype static type analyzer
-.pytype/
+class Game:
+    EVENTS = [
+        {"title": "Чужий на території", "desc": "Сліди іншого клану",
+         "choices": [("Взяти (+30 їжі)", {"food": 30}),
+                     ("Не чіпати", {"morale": 5}),
+                     ("Засада (+50 їжі)", {"food": 50, "morale": -10})]},
+        {"title": "Поранене дитинча", "desc": "Дитинча павіана зі зламаною лапою",
+         "choices": [("Вилікувати (+3 трави)", {"herbs": 3, "morale": 15}),
+                     ("Залишити", {"morale": -5}),
+                     ("Здобич (+15 їжі)", {"food": 15, "morale": -10})]},
+    ]
+    
+    SURVIVAL_EVENTS = [
+        {"title": "Чужий клан нападає ⚔️", "desc": "Ворожий клан хоче вашу територію!",
+         "choices": [("Битись! (втрати 20❤️)", {"hp_loss": 20, "morale": 15}),
+                     ("Втекти (втратити запаси)", {"food": -20, "water": -10}),
+                     ("Домовитись (віддати їжу)", {"food": -15, "morale": 5})]},
+        {"title": "Голодний хижак 🐆", "desc": "Леопард переслідує клан!",
+         "choices": [("Атакувати (ризик)", {"hp_loss": 15, "food": 25}),
+                     ("Сховатись", {"morale": -5}),
+                     ("Втекти на дерева", {})]},
+        {"title": "Чужинець просить притулку 🧑‍🤝‍🧑", "desc": "Самотній гомінід просить прийняти його в клан.",
+         "choices": [("Прийняти (+1 член)", {"join": True, "food": -10}),
+                     ("Прогнати", {"morale": -5}),
+                     ("Вбити (+20 їжі)", {"food": 20, "morale": -15})]},
+        {"title": "Отруйна вода 💧☠️", "desc": "Вода в калюжі отруйна!",
+         "choices": [("Пити (ризик)", {"poison": True}),
+                     ("Піти шукати іншу", {"water": 10}),
+                     ("Очистити травами", {"herbs": -1, "water": 20})]},
+        {"title": "Землетрус 🌍💥", "desc": "Земля трясеться! Камені падають!",
+         "choices": [("Бігти в печеру", {"hp_loss": 5}),
+                     ("Залишитись на місці", {"hp_loss": 15}),
+                     ("Допомогти слабким", {"hp_loss": 10, "morale": 20})]},
+        {"title": "Чужий клан пропонує союз 🤝", "desc": "Вони хочуть об'єднатись!",
+         "choices": [("Погодитись (+2 члени)", {"join_two": True, "food": -20}),
+                     ("Відмовитись", {"morale": 5}),
+                     ("Влаштувати бійню", {"food": 30, "morale": -20})]},
+    ]
 
-# Cython debug symbols
-cython_debug/
+    APEX_PREDATORS = [
+        {"name": "Чорний тигр", "damage": 35, "biomes": [Biome.JUNGLE, Biome.WOODLAND]},
+        {"name": "Золотистий тигр", "damage": 35, "biomes": [Biome.JUNGLE, Biome.SAVANNA, Biome.WOODLAND]},
+        {"name": "Білий тигр", "damage": 35, "biomes": [Biome.JUNGLE, Biome.SAVANNA, Biome.WOODLAND, Biome.RIVER]},
+        {"name": "Крокодил Торбьярнарсона", "damage": 40, "biomes": [Biome.RIVER, Biome.WOODLAND]},
+        {"name": "Африканський скальний питон", "damage": 30, "biomes": [Biome.JUNGLE, Biome.WOODLAND]},
+        {"name": "Орёл-скоморох", "damage": 30, "biomes": [Biome.SAVANNA, Biome.JUNGLE, Biome.WOODLAND]},
+        {"name": "Гієна", "damage": 25, "biomes": [Biome.SAVANNA, Biome.WOODLAND]},
+        {"name": "Чепрачний шакал", "damage": 20, "biomes": [Biome.SAVANNA]},
+    ]
 
-# PyCharm
-#   JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#   be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#   and can be added to the global gitignore or merged into this file.  For a more nuclear
-#   option (not recommended) you can uncomment the following to ignore the entire idea folder.
-# .idea/
+    HERBIVORE_THREATS = [
+        {"name": "Миоценовий слон", "damage": 35, "biomes": [Biome.SAVANNA, Biome.WOODLAND]},
+        {"name": "Білий носорог", "damage": 30, "biomes": [Biome.SAVANNA]},
+        {"name": "Бегемот", "damage": 30, "biomes": [Biome.RIVER, Biome.WOODLAND]},
+        {"name": "Гігантський кабан", "damage": 25, "biomes": [Biome.JUNGLE]},
+        {"name": "Африканський буйвол", "damage": 30, "biomes": [Biome.SAVANNA]},
+    ]
 
-# Abstra
-#   Abstra is an AI-powered process automation framework.
-#   Ignore directories containing user credentials, local state, and settings.
-#   Learn more at https://abstra.io/docs
-.abstra/
+    MINOR_THREATS = [
+        {"name": "Восточна зелена мамба", "damage": 15, "biomes": [Biome.JUNGLE, Biome.WOODLAND]},
+        {"name": "Чорна мамба", "damage": 18, "biomes": [Biome.JUNGLE, Biome.SAVANNA]},
+        {"name": "Гігантська багатоніжка", "damage": 18, "biomes": [Biome.JUNGLE, Biome.WOODLAND]},
+        {"name": "Африканська видра", "damage": 16, "biomes": [Biome.RIVER, Biome.WOODLAND]},
+    ]
 
-# Visual Studio Code
-#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
-#   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#   and can be added to the global gitignore or merged into this file. However, if you prefer, 
-#   you could uncomment the following to ignore the entire vscode folder
-# .vscode/
-# Temporary file for partial code execution
-tempCodeRunnerFile.py
+    PASSIVE_PREY = [
+        {"name": "Газель Доркас", "food": 20, "biomes": [Biome.SAVANNA]},
+        {"name": "Миоценова лошадь", "food": 25, "biomes": [Biome.SAVANNA, Biome.WOODLAND]},
+        {"name": "Миоценовий пелікан", "food": 15, "biomes": [Biome.RIVER]},
+    ]
 
-# Ruff stuff:
-.ruff_cache/
+    CRAFT_RECIPES = [
+        {"name": "Место для сна", "ingredients": [{"name": "Стангерия шерстистая", "count": 4}], "rounds": 12,
+         "effect": "sleep_site", "desc": "Сон восстанавливает силы, укрепляет здоровье, вход в окно нейронной сети и эволюции", "reduced_with_dexterity": True},
+        {"name": "Стебель стангерии шерстистой", "ingredients": [{"name": "Стангерия шерстистая", "count": 1}], "rounds": 4,
+         "effect": "stem_stangeria", "desc": "Полученным стеблем добываем мёд и муравьиную кислоту"},
+        {"name": "Точильный камень", "ingredients": [{"name": "Гранит", "count": 2}], "rounds": 8,
+         "effect": "sharpening_stone", "desc": "Перемалывает определённые растения в пасту"},
+        {"name": "Базальтовый резак", "ingredients": [{"name": "Базальт", "count": 2}], "rounds": 10,
+         "effect": "basalt_cutter", "desc": "Затачивает ветки, разделывает туши, оружие"},
+        {"name": "Скребок из обсидиана", "ingredients": [{"name": "Обсидиан", "count": 2}], "rounds": 10,
+         "effect": "obsidian_scraper", "desc": "Разделывает туши, затачивает ветки, оружие"},
+        {"name": "Палка", "ingredients": [{"name": "Сухая ветка", "count": 1}], "rounds": 5,
+         "effect": "stick", "desc": "Оружие для охоты, рыбалки и для извлечения мелкой добычи из отверстий в земле. Так же рычаг для опрокидывания камней"},
+        {"name": "Заострённая палка (копьё)", "ingredients": [{"name": "Палка", "count": 1}, {"name": ["Базальтовый резак", "Скребок из обсидиана"], "count": 1}], "rounds": 7,
+         "effect": "spear", "desc": "Оружие для охоты, рыбалки и для извлечения мелкой добычи из отверстий в земле. Также рычаг для опрокидывания камней"},
+        {"name": "Измельчённый кат", "ingredients": [{"name": "Лист ката", "count": 1}, {"name": "Точильный камень", "count": 1}], "rounds": 8,
+         "effect": "khat", "desc": "Защита от холода, исцеление сломанных костей"},
+        {"name": "Листья хвоща", "ingredients": [{"name": "Хвощ", "count": 1}], "rounds": 4,
+         "effect": "horsetail_leaves", "desc": "Лечит кровотечение, исцеляет кости"},
+        {"name": "Паста из хвоща", "ingredients": [{"name": "Хвощ", "count": 1}, {"name": "Точильный камень", "count": 1}], "rounds": 7,
+         "effect": "horsetail_paste", "desc": "Лечит кровотечение, исцеляет кости"},
+        {"name": "Треснувший кокос", "ingredients": [{"name": "Кокос", "count": 1}, {"name": ["Гранит", "Базальт", "Обсидиан", "Метеорит"], "count": 1}], "rounds": 6,
+         "effect": "cracked_coconut", "desc": "Защита от яда, защита от пищевого отравления"},
+        {"name": "Разбитый кокос", "ingredients": [{"name": "Треснувший кокос", "count": 1}], "rounds": 5,
+         "effect": "broken_coconut", "desc": "Защита от яда, защита от пищевого отравления"},
+        {"name": "Паста из куркумы", "ingredients": [{"name": "Африканская куркума", "count": 1}, {"name": "Точильный камень", "count": 1}], "rounds": 6,
+         "effect": "turmeric_paste", "desc": "Защита от яда"},
+        {"name": "Мёд", "ingredients": [{"name": "Стебель стангерии шерстистой", "count": 1}], "rounds": 5,
+         "effect": "honey", "desc": "Если мёд съесть со стебля, то будет защита от яда. Если намазаться мёдом - защита от кровотечения"},
+        {"name": "Сок алоэ", "ingredients": [{"name": "Лист алоэ", "count": 1}], "rounds": 5,
+         "effect": "aloe_juice", "desc": "Защита от кровотечения, защита от жары и зноя"},
+        {"name": "Загустевший сок алоэ", "ingredients": [{"name": "Лист алоэ", "count": 1}, {"name": "Точильный камень", "count": 1}], "rounds": 7,
+         "effect": "thick_aloe", "desc": "Защита от кровотечения, защита от жары и зноя"},
+        {"name": "Разбитое яйцо", "ingredients": [{"name": ["Яйцо питона", "Яйцо крокодила", "Яйцо пеликана", "Яйцо орела-скомороха"], "count": 1}, {"name": ["Гранит", "Базальт", "Обсидиан", "Метеорит"], "count": 1}], "rounds": 4,
+         "effect": "broken_egg", "desc": "Утоление голода"},
+        {"name": "Треснувший плод баобаба", "ingredients": [{"name": "Плод баобаба", "count": 1}, {"name": ["Гранит", "Базальт", "Обсидиан", "Метеорит"], "count": 1}], "rounds": 4,
+         "effect": "baobab_fruit", "desc": "Утоление голода"},
+        {"name": "Живая изгородь", "ingredients": [{"name": "Сухая ветка", "count": 4}], "rounds": 10,
+         "effect": "living_hedge", "desc": "Стена для защиты от хищников", "reduced_with_dexterity": True},
+        {"name": "Заросли колючего кустарника", "ingredients": [{"name": "Колючий кустарник", "count": 4}], "rounds": 10,
+         "effect": "thorn_hedge", "desc": "Стена для защиты от хищников", "reduced_with_dexterity": True},
+    ]
 
-# PyPI configuration file
-.pypirc
+    PREDATOR_ACHIEVEMENTS = {
+        "Крокодил Торбьярнарсона": "Искусный повелитель крокодилов",
+        "Гієна": "Искусный повелитель гиен",
+        "Чепрачний шакал": "Искусный повелитель шакалов",
+        "Золотистий тигр": "Искусный повелитель саблезубых тигров",
+        "Чорний тигр": "Искусный повелитель саблезубых тигров",
+        "Білий тигр": "Искусный повелитель саблезубых тигров",
+        "Орёл-скоморох": "Грозный хищник",
+    }
+    
+    def __init__(self):
+        self.clan = Clan()
+        self.world = World()
+        self.evo = EvolutionEngine(self.clan)
+        self.running = True
+        self.turns = 0
+        self.shelter_cooldown = 0
+        self.mode = GameMode.TUTORIAL
+        self.max_turns = 500
+        self.hunger_rate = 1.0
+        self.thirst_rate = 1.0
+        self.event_chance = 0.08
+        self.injury_chance = 0.03
+        self.hunter_chance = 0.02
+        self.stranger_chance = 0.04  # Шанс появи чужинця
+        self.save_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), "ancestors_save.json")
+        self.strangers_accepted = 0
+        self.strangers_rejected = 0
+        self.strangers_killed = 0
+        self.mode_config = {}
+        self.apex_predator_kills = set()
+        self.achievements = []
+        self.food_mult = 1.0
+        self.water_mult = 1.0
+        self.forage_chance = 0.7
+        self.predator_chance = 0.08
+        self.sleep_site = False
+        self.living_hedge = False
+        self.thorn_hedge = False
+        self.online_chat = []
+        self.network_server = None
+        self.network_client = None
+        self.network_thread = None
+        self.network_connected = False
+        self.remote_clans = {}
+        self.pending_trade_offer = None
+        self.pending_joint_event = None
+    
+    def select_mode(self):
+        print("\n" + "=" * 70)
+        print("     🧬 ANCESTORS: THE HUMANKIND ODYSSEY 🧬")
+        print("     Вибір режиму гри")
+        print("=" * 70)
+        print("\n [1] 🐣 НОВАЧОК — для тих, хто не знає гри")
+        print("     Підказки, повільніший голод, більше ресурсів")
+        print()
+        print(" [2] ☠️ ВИЖИВАННЯ — справжнє випробування")
+        print("     Чужі клани, хижаки, травми, голод, отрути")
+        print("     Треба вижити будь-якою ціною!")
+        print()
+        print(" [3] ⚙️ КОРИСТУВАЦЬКИЙ — налаштуй сам")
+        print("     Складність, події, ресурси — все для тебе")
+        print()
+        
+        choice = input("➤ Оберіть режим (1-3): ").strip()
+        
+        if choice == "1":
+            self.mode = GameMode.TUTORIAL
+            self._apply_tutorial_settings()
+            print("\n🐣 РЕЖИМ НОВАЧОК!")
+            print("📖 Підказки будуть з'являтись автоматично.")
+        elif choice == "2":
+            self.mode = GameMode.SURVIVAL
+            self._apply_survival_settings()
+            print("\n☠️ РЕЖИМ ВИЖИВАННЯ!")
+            print("⚔️ Чужі клани, хижаки, голод — виживай!")
+        elif choice == "3":
+            self.mode = GameMode.CUSTOM
+            self._custom_settings()
+            print("\n⚙️ КОРИСТУВАЦЬКИЙ РЕЖИМ!")
+        else:
+            print("❌ Невірно. Завантажую режим Новачок...")
+            self.mode = GameMode.TUTORIAL
+            self._apply_tutorial_settings()
+        
+        input("Натисни Enter щоб продовжити...")
+    
+    def _apply_tutorial_settings(self):
+        self.max_turns = 700
+        self.hunger_rate = 0.6
+        self.thirst_rate = 0.6
+        self.event_chance = 0.05
+        self.injury_chance = 0.02
+        self.hunter_chance = 0.01
+        self.stranger_chance = 0.03
+        self.clan.food_storage = 80
+        self.clan.water_storage = 80
+        self.clan.herbs_storage = 5
+        self.tutorial_step = 0
+    
+    def _apply_survival_settings(self):
+        self.max_turns = 300
+        self.hunger_rate = 1.5
+        self.thirst_rate = 1.5
+        self.event_chance = 0.15
+        self.injury_chance = 0.08
+        self.hunter_chance = 0.05
+        self.stranger_chance = 0.08
+        self.clan.food_storage = 30
+        self.clan.water_storage = 30
+        self.clan.herbs_storage = 1
+    
+    def _custom_settings(self):
+        print("\n" + "-" * 50)
+        print("⚙️ НАЛАШТУВАННЯ РЕЖИМУ")
+        print("-" * 50)
+        
+        try:
+            self.max_turns = int(input("Максимум ходів (100-999, Enter=500): ") or "500")
+            self.max_turns = max(100, min(999, self.max_turns))
+        except:
+            self.max_turns = 500
+        
+        print(f"\nГолод та спрага:")
+        rate = input("Швидкість голоду/спраги (0.5-3.0, Enter=1.0): ").strip()
+        self.hunger_rate = float(rate) if rate else 1.0
+        self.thirst_rate = self.hunger_rate
+        
+        print(f"\nПодії:")
+        ev = input("Шанс подій за хід (0.01-0.30, Enter=0.08): ").strip()
+        self.event_chance = float(ev) if ev else 0.08
+        sg = input("Шанс появи чужинців (0.00-0.15, Enter=0.04): ").strip()
+        self.stranger_chance = float(sg) if sg else 0.04
+        
+        print(f"\nРесурси на старті:")
+        try:
+            self.clan.food_storage = int(input("Їжа (10-200, Enter=50): ") or "50")
+        except:
+            self.clan.food_storage = 50
+        try:
+            self.clan.water_storage = int(input("Вода (10-200, Enter=50): ") or "50")
+        except:
+            self.clan.water_storage = 50
+        try:
+            self.clan.herbs_storage = int(input("Трави (0-20, Enter=3): ") or "3")
+        except:
+            self.clan.herbs_storage = 3
+        
+        print("\n✅ Налаштування збережено!")
+    
+    def _show_tutorial_hint(self):
+        hints = [
+            "\n💡 ПІДКАЗКА: Збирай їжу [1] та воду [2] кожен хід, щоб клан не голодував!",
+            "\n💡 ПІДКАЗКА: Відпочинок [3] відновлює енергію та лікує легкі травми.",
+            "\n💡 ПІДКАЗКА: Досліджуй [4] нові території — знайдеш ресурси та відкриття!",
+            "\n💡 ПІДКАЗКА: Переходь [5] між біомами. У джунглях більше їжі, у савані — небезпека.",
+            "\n💡 ПІДКАЗКА: Неарони [6] створюють пари. Жінки народжують через 3-6 ходів.",
+            "\n💡 ПІДКАЗКА: Еволюція [7] потребує відкриття рис. Качай нейрони!",
+            "\n💡 ПІДКАЗКА: Лікування [10] використовує трави. Збирай їх під час дослідження!",
+            "\n💡 ПІДКАЗКА: Стоянка [11] дозволяє розподілити ресурси між усіма.",
+            "\n💡 ПІДКАЗКА: Коли предок старіє, новий гравець обирається автоматично.",
+        ]
+        
+        if self.tutorial_step < len(hints):
+            print(hints[self.tutorial_step])
+            self.tutorial_step += 1
+        else:
+            print(random.choice(hints))
+    
+    def setup(self):
+        print("\n" + "=" * 70)
+        print("     🧬 ANCESTORS: THE HUMANKIND ODYSSEY 🧬")
+        print("     Версія 3.5 — РЕЖИМИ ГРИ")
+        print("=" * 70)
+        
+        # ВИБІР РЕЖИМУ
+        print("\n🎮 ВИБЕРІТЬ РЕЖИМ ГРИ:")
+        print("=" * 60)
+        print(" [1] 🌱 НОВАЧОК — для тих, хто вперше грає")
+        print("     • Підказки та пояснення кожного кроку")
+        print("     • Збільшені шанси на успіх")
+        print("     • Додаткові ресурси на старті")
+        print("-" * 40)
+        print(" [2] 🏕️ ВИЖИВАННЯ — мінімальні ресурси, суворі умови")
+        print("     • Складніше знайти їжу та воду")
+        print("     • Хижаки частіше нападають")
+        print("     • Смерть настає швидше")
+        print("-" * 40)
+        print(" [3] 👽 ЧУЖАКИ — у клан приходять незнайомці")
+        print("     • Чужі гомініди стукають у стоянку")
+        print("     • Вирішуйте: прийняти чи прогнати")
+        print("     • Кожен чужик має свої риси та таємниці")
+        print("-" * 40)
+        print(" [4] ⚙️ КОРИСТУВАЦЬКИЙ — налаштуйте гру під себе")
+        print("     • Виберіть початкові ресурси")
+        print("     • Налаштуйте складність")
+        print("     • Додайте особливі умови")
+        print("-" * 40)
+        print(" [5] 💀 ЖОРСТОКИЙ — майже без шансів")
+        print("     • Дуже мало їжі та води на старті")
+        print("     • Хижаки й хвороби частіше нападають")
+        print("     • Смерть може настати за кілька ходів")
+        print("-" * 40)
+        print(" [6] 🌐 ОНЛАЙН — симуляція взаємодії з сусідами")
+        print("     • Пошуки ресурсів у мережі виживання")
+        print("     • Додаткові події з іншими кланами")
+        print("     • Баланс між ризиком і співпрацею")
+        print("=" * 60)
+        
+        mode = input("➤ ").strip()
+        
+        # Застосовуємо налаштування режиму
+        mode_config = self._apply_mode(mode)
+        
+        print(f"\n✅ Режим: {mode_config['name']}")
+        print(f"   {mode_config['desc']}")
+        
+        if mode_config.get('warning'):
+            print(f"   ⚠️ {mode_config['warning']}")
+        
+        input("\nНатисни Enter, щоб продовжити...")
+        
+        # Далі — створення персонажа
+        print("Виберіть стать свого предка:")
+        print("  [1] ♂ Чоловік")
+        print("  [2] ♀ Жінка")
+        gender_choice = input("➤ ").strip()
+        
+        if gender_choice == "2":
+            gender = Gender.FEMALE
+            default_name = "Люсі"
+        else:
+            gender = Gender.MALE
+            default_name = "Арді"
+        
+        name = input(f"Ім'я предка (Enter = {default_name}): ").strip()
+        if not name: name = default_name
 
-# Marimo
-marimo/_static/
-marimo/_lsp/
-__marimo__/
+        default_clan_name = f"{name} Клан"
+        clan_name = input(f"Назва клану (Enter = {default_clan_name}): ").strip()
+        if not clan_name: clan_name = default_clan_name
+        self.clan.name = clan_name
+        
+        p = self.clan.add_member(name, gender, age=20, is_player=True)
+        p.strength = random.randint(4, 7)
+        p.speed = random.randint(4, 7)
+        p.intelligence = random.randint(4, 7)
+        p.skills[Skill.CLIMBING] = 2
+        p.skills[Skill.GATHERING] = 1
+        
+        # Додаємо членів клану (залежить від режиму)
+        self._spawn_clan(mode_config)
+        
+        # Застосовуємо бонуси режиму
+        self._apply_mode_bonuses(mode_config)
+        
+        self.clan.add_chronicle(f"🏁 Клан '{clan_name}' засновано {name}")
+        if self.mode == GameMode.ONLINE:
+            self._setup_online_network()
+        self._add_chat_message("Система", f"{clan_name} підключився до онлайн-мережі", system=True)
+        self._emit_online_chat_message()
+        
+        print(f"\nКлан: {len(self.clan.alive_members)} членів")
+        print(f"  ♂ Чоловіків: {len(self.clan.male_members)}")
+        print(f"  ♀ Жінок: {len(self.clan.female_members)}")
+        print(f"📦 🍖{self.clan.food_storage} 💧{self.clan.water_storage} 🌿{self.clan.herbs_storage}")
+        
+        if p.gender == Gender.FEMALE:
+            print("\n💡 Ви жінка-предок. Можете народжувати дітей!")
+        else:
+            print("\n💡 Ви чоловік-предок. Можете запліднювати жінок!")
+        
+        # Підказки для новачка
+        if mode_config.get('tutorial'):
+            print("\n📖 ПОРАДИ НОВАЧКУ:")
+            print("  • [1] 🍖 Їжа — найважливіше, щоб вижити")
+            print("  • [4] 🔍 Досліджуйте світ, щоб знайти ресурси")
+            print("  • [3] 😴 Відпочивайте, щоб відновити сили")
+            print("  • [6] 💕 Неароньте, щоб розмножуватися")
+            print("  • [7] 🧬 Еволюціонуйте, коли будете готові")
+        
+        input("Натисни Enter...")
+    
+    def _apply_mode(self, mode_choice):
+        """Налаштування режиму гри."""
+        configs = {
+            "1": {
+                "name": "🌱 НОВАЧОК",
+                "desc": "Полегшена гра з підказками",
+                "food_mult": 2.0,
+                "water_mult": 2.0,
+                "forage_chance": 0.9,
+                "predator_chance": 0.02,
+                "start_food": 80,
+                "start_water": 80,
+                "start_herbs": 8,
+                "start_members": 6,
+                "tutorial": True,
+                "warning": None
+            },
+            "2": {
+                "name": "🏕️ ВИЖИВАННЯ",
+                "desc": "Суворі умови, мінімум ресурсів",
+                "food_mult": 0.5,
+                "water_mult": 0.5,
+                "forage_chance": 0.4,
+                "predator_chance": 0.15,
+                "start_food": 15,
+                "start_water": 10,
+                "start_herbs": 0,
+                "start_members": 3,
+                "tutorial": False,
+                "warning": "Кожен хід може стати останнім! Будь обережний!"
+            },
+            "3": {
+                "name": "👽 ЧУЖАКИ",
+                "desc": "Незнайомці приходять у клан",
+                "food_mult": 1.0,
+                "water_mult": 1.0,
+                "forage_chance": 0.7,
+                "predator_chance": 0.08,
+                "start_food": 40,
+                "start_water": 40,
+                "start_herbs": 3,
+                "start_members": 4,
+                "tutorial": False,
+                "warning": "Приймати чужинців чи ні? Кожен вибір має наслідки!"
+            },
+            "4": {
+                "name": "⚙️ КОРИСТУВАЦЬКИЙ",
+                "desc": "Налаштуйте гру під себе",
+                "food_mult": 1.0,
+                "water_mult": 1.0,
+                "forage_chance": 0.7,
+                "predator_chance": 0.08,
+                "start_food": 50,
+                "start_water": 50,
+                "start_herbs": 3,
+                "start_members": 4,
+                "tutorial": False,
+                "warning": None
+            },
+            "5": {
+                "name": "💀 ЖОРСТОКИЙ",
+                "desc": "Майже без шансів",
+                "food_mult": 0.4,
+                "water_mult": 0.4,
+                "forage_chance": 0.35,
+                "predator_chance": 0.2,
+                "start_food": 10,
+                "start_water": 8,
+                "start_herbs": 0,
+                "start_members": 2,
+                "hunger_rate": 1.5,
+                "thirst_rate": 1.5,
+                "event_chance": 0.1,
+                "injury_chance": 0.08,
+                "tutorial": False,
+                "warning": "Це дуже важкий режим. Будьте готові до втрат!"
+            },
+            "6": {
+                "name": "🌐 ОНЛАЙН",
+                "desc": "Симуляція взаємодії з іншими кланами",
+                "food_mult": 0.9,
+                "water_mult": 0.9,
+                "forage_chance": 0.75,
+                "predator_chance": 0.09,
+                "start_food": 40,
+                "start_water": 40,
+                "start_herbs": 4,
+                "start_members": 4,
+                "event_chance": 0.1,
+                "stranger_chance": 0.08,
+                "tutorial": False,
+                "warning": "Онлайн-режим симулює взаємодію зі 'сусідніми' кланами. Реальної мережі немає."
+            }
+        }
+        
+        choice = mode_choice if mode_choice in configs else "1"
+        config = configs[choice]
+        
+        # Користувацький режим — додаткові налаштування
+        if choice == "4":
+            config = self._custom_mode_setup()
+        
+        if choice == "1":
+            self.mode = GameMode.TUTORIAL
+        elif choice in ("2", "5"):
+            self.mode = GameMode.SURVIVAL
+        elif choice == "6":
+            self.mode = GameMode.ONLINE
+        else:
+            self.mode = GameMode.CUSTOM
+        self.mode_config = config
+        return config
 
-# Streamlit
-.streamlit/secrets.toml
+    def _custom_mode_setup(self):
+        """Налаштування користувацького режиму."""
+        print("\n" + "=" * 60)
+        print("⚙️ КОРИСТУВАЦЬКІ НАЛАШТУВАННЯ")
+        print("=" * 60)
+        
+        config = {
+            "name": "⚙️ КОРИСТУВАЦЬКИЙ",
+            "desc": "Індивідуальні налаштування",
+            "start_members": 4,
+            "start_food": 50,
+            "start_water": 50,
+            "start_herbs": 3,
+            "forage_chance": 0.7,
+            "predator_chance": 0.08,
+            "food_mult": 1.0,
+            "water_mult": 1.0,
+            "tutorial": False,
+            "warning": None
+        }
+        
+        print("\n🏁 Кількість стартових членів клану (рекомендовано 3-6):")
+        try:
+            members = int(input("➤ ").strip())
+            if 2 <= members <= 10:
+                config["start_members"] = members
+            else:
+                print("   → Встановлено 4 (допустимо 2-10)")
+        except:
+            print("   → Встановлено 4")
+        
+        print("\n🍖 Початкова їжа (рекомендовано 20-80):")
+        try:
+            food = int(input("➤ ").strip())
+            if 5 <= food <= 200:
+                config["start_food"] = food
+            else:
+                print("   → Встановлено 50")
+        except:
+            print("   → Встановлено 50")
+        
+        print("\n💧 Початкова вода (рекомендовано 20-80):")
+        try:
+            water = int(input("➤ ").strip())
+            if 5 <= water <= 200:
+                config["start_water"] = water
+            else:
+                print("   → Встановлено 50")
+        except:
+            print("   → Встановлено 50")
+        
+        print("\n🌿 Початкові трави (рекомендовано 0-10):")
+        try:
+            herbs = int(input("➤ ").strip())
+            if 0 <= herbs <= 30:
+                config["start_herbs"] = herbs
+            else:
+                print("   → Встановлено 3")
+        except:
+            print("   → Встановлено 3")
+        
+        print("\n🎯 Складність пошуку їжі (0.1 — дуже важко, 1.0 — дуже легко):")
+        try:
+            forage = float(input("➤ ").strip())
+            if 0.1 <= forage <= 1.0:
+                config["forage_chance"] = forage
+            else:
+                print("   → Встановлено 0.7")
+        except:
+            print("   → Встановлено 0.7")
+        
+        print("\n🐅 Шанс нападу хижаків (0.0 — безпечно, 0.3 — небезпечно):")
+        try:
+            pred = float(input("➤ ").strip())
+            if 0.0 <= pred <= 0.5:
+                config["predator_chance"] = pred
+            else:
+                print("   → Встановлено 0.08")
+        except:
+            print("   → Встановлено 0.08")
+        
+        print(f"\n✅ Налаштування збережено!")
+        print(f"   Клан: {config['start_members']} членів")
+        print(f"   Ресурси: 🍖{config['start_food']} 💧{config['start_water']} 🌿{config['start_herbs']}")
+        
+        return config
+
+    def _spawn_clan(self, mode_config):
+        """Створення клану залежно від режиму."""
+        members_count = mode_config.get("start_members", 4)
+        
+        # Список імен
+        male_names = ["Бо","Дар","Зук","Нок","Рук","Тум","Сол","Гор"]
+        female_names = ["Айла","Кіра","Міра","Вії","Ло","Зара","Ніна","Тара"]
+        
+        random.shuffle(male_names)
+        random.shuffle(female_names)
+        
+        # Створюємо членів клану
+        for i in range(members_count):
+            if i % 2 == 0 and female_names:
+                name = female_names.pop()
+                gender = Gender.FEMALE
+            elif male_names:
+                name = male_names.pop()
+                gender = Gender.MALE
+            elif female_names:
+                name = female_names.pop()
+                gender = Gender.FEMALE
+            else:
+                break
+            
+            m = self.clan.add_member(name, gender, age=random.randint(18, 35))
+            m.strength = random.randint(3, 6)
+            m.speed = random.randint(3, 6)
+            m.intelligence = random.randint(2, 5)
+            m.morale = random.randint(60, 100)
+
+    def _apply_mode_bonuses(self, mode_config):
+        """Застосування бонусів режиму."""
+        self.clan.food_storage = mode_config.get("start_food", 50)
+        self.clan.water_storage = mode_config.get("start_water", 50)
+        self.clan.herbs_storage = mode_config.get("start_herbs", 3)
+        self.max_turns = mode_config.get("max_turns", self.max_turns)
+        
+        # Зберігаємо параметри режиму для використання в інших методах
+        self.food_mult = mode_config.get("food_mult", 1.0)
+        self.water_mult = mode_config.get("water_mult", 1.0)
+        self.forage_chance = mode_config.get("forage_chance", 0.7)
+        self.predator_chance = mode_config.get("predator_chance", 0.08)
+        self.hunger_rate = mode_config.get("hunger_rate", 1.0)
+        self.thirst_rate = mode_config.get("thirst_rate", 1.0)
+        self.event_chance = mode_config.get("event_chance", 0.06)
+        self.injury_chance = mode_config.get("injury_chance", 0.03)
+        self.stranger_chance = mode_config.get("stranger_chance", 0.04)
+    
+    def _apply_mode_settings(self, mode_config):
+        """Restore derived mode parameters without resetting clan resources."""
+        self.food_mult = mode_config.get("food_mult", self.food_mult)
+        self.water_mult = mode_config.get("water_mult", self.water_mult)
+        self.forage_chance = mode_config.get("forage_chance", self.forage_chance)
+        self.predator_chance = mode_config.get("predator_chance", self.predator_chance)
+        self.hunger_rate = mode_config.get("hunger_rate", self.hunger_rate)
+        self.thirst_rate = mode_config.get("thirst_rate", self.thirst_rate)
+        self.event_chance = mode_config.get("event_chance", self.event_chance)
+        self.injury_chance = mode_config.get("injury_chance", self.injury_chance)
+        self.stranger_chance = mode_config.get("stranger_chance", self.stranger_chance)
+        self.max_turns = mode_config.get("max_turns", self.max_turns)
+    
+    def menu(self):
+        if self.clan.injured_members:
+            print(f"\n⚠️ Поранено: {len(self.clan.injured_members)} членів клану!")
+        if self.clan.pregnant_members:
+            preg_names = ", ".join(m.name for m in self.clan.pregnant_members)
+            print(f"🤰 Вагітні: {preg_names}")
+        
+        if self.mode == GameMode.SURVIVAL:
+            print(f"\n☠️ ДНІВ ДО КІНЦЯ: {self.max_turns - self.turns}")
+
+        if self.mode == GameMode.ONLINE:
+            self._show_online_turn_panel()
+            print("-" * 70)
+        
+        print("\nДІЇ:")
+        print(" [1] 🍖 Їжа  [2] 💧 Вода  [3] 😴 Відпочинок")
+        print(" [4] 🔍 Дослідити  [5] 🗺️  Перехід  [6] 💕 Неарони")
+        print(" [7] 🧬 Еволюція  [8] 👪 Клан  [9] 🔨 Знаряддя")
+        print(" [10] 🩺 Лікування  [11] 🏠 Стоянка  [12] 📖 Літопис")
+        if self.mode == GameMode.ONLINE:
+            print(" [13] 💬 Онлайн-чат  [14] 🧭 Сусіди")
+        print(" [s] 💾 Зберегти  [l] 📂 Завантажити")
+        print(" [q] Вихід")
+        return input("➤ ").strip().lower()
+    
+    def save_game(self):
+        data = {
+            "turns": self.turns,
+            "max_turns": self.max_turns,
+            "mode": self.mode.name,
+            "mode_config": self.mode_config,
+            "hunger_rate": self.hunger_rate,
+            "thirst_rate": self.thirst_rate,
+            "event_chance": self.event_chance,
+            "injury_chance": self.injury_chance,
+            "stranger_chance": self.stranger_chance,
+            "strangers_accepted": self.strangers_accepted,
+            "strangers_rejected": self.strangers_rejected,
+            "strangers_killed": self.strangers_killed,
+            "apex_predator_kills": list(self.apex_predator_kills),
+            "achievements": self.achievements,
+            "online_chat": self.online_chat,
+            "clan": self._serialize_clan(),
+            "world": self._serialize_world(),
+            "evo": self._serialize_evo(),
+            "running": self.running,
+        }
+        try:
+            with open(self.save_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            print("\n✅ Гра збережена")
+        except Exception as e:
+            print(f"\n❌ Помилка збереження: {e}")
+        input("Натисни Enter...")
+    
+    def load_game(self):
+        if not os.path.exists(self.save_file):
+            print("\n❌ Файл збереження не знайдено")
+            input("Натисни Enter...")
+            return False
+        try:
+            with open(self.save_file, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as e:
+            print(f"\n❌ Помилка читання збереження: {e}")
+            input("Натисни Enter...")
+            return False
+        try:
+            self._deserialize_game(data)
+            self._apply_mode_settings(self.mode_config)
+            return True
+        except Exception as e:
+            print(f"\n❌ Не вдалося завантажити гру: {e}")
+            input("Натисни Enter...")
+            return False
+    
+    def load_from_menu(self):
+        if self.load_game():
+            print("\n✅ Гра завантажена")
+        else:
+            print("\n❌ Завантаження не вдалося")
+        input("Натисни Enter...")
+    
+    def _save_before_exit(self):
+        choice = input("💾 Зберегти перед виходом? (y/n): ").strip().lower()
+        if choice == "y":
+            self.save_game()
+    
+    def _serialize_clan(self):
+        return {
+            "name": self.clan.name,
+            "generation": self.clan.generation,
+            "total_members": self.clan.total_members,
+            "total_deaths": self.clan.total_deaths,
+            "tool_level": self.clan.tool_level,
+            "food_storage": self.clan.food_storage,
+            "water_storage": self.clan.water_storage,
+            "herbs_storage": self.clan.herbs_storage,
+            "discoveries": self.clan.discoveries,
+            "chronicle": self.clan.chronicle,
+            "current_year": self.clan.current_year,
+            "materials": self.clan.materials,
+            "crafted_items": self.clan.crafted_items,
+            "members": [self._serialize_hominid(m) for m in self.clan.members],
+        }
+    
+    def _serialize_hominid(self, m):
+        return {
+            "name": m.name,
+            "age": m.age,
+            "gender": m.gender.name,
+            "is_player": m.is_player,
+            "health": m.health,
+            "energy": m.energy,
+            "hunger": m.hunger,
+            "thirst": m.thirst,
+            "fatigue": m.fatigue,
+            "alive": m.alive,
+            "morale": m.morale,
+            "strength": m.strength,
+            "speed": m.speed,
+            "intelligence": m.intelligence,
+            "skills": {k.name: v for k, v in m.skills.items()},
+            "injuries": [i.name for i in m.injuries],
+            "role": m.role,
+            "experience": m.experience,
+            "children": m.children,
+            "discoveries": m.discoveries,
+            "father_name": m.father_name,
+            "pregnant": m.pregnant,
+            "pregnancy_timer": m.pregnancy_timer,
+            "partner_name": m.partner_name,
+            "brain": {
+                "traits": {
+                    tid: {"progress": t.progress, "unlocked": t.unlocked}
+                    for tid, t in m.brain.traits.items()
+                }
+            }
+        }
+    
+    def _serialize_world(self):
+        return {
+            "biome": self.world.biome.name,
+            "weather": self.world.weather,
+            "time": self.world.time,
+            "day": self.world.day,
+            "season": self.world.season.name,
+            "season_days": self.world.season_days,
+            "survival_timer": self.world.survival_timer,
+            "drought_timer": self.world.drought_timer,
+        }
+    
+    def _serialize_evo(self):
+        return {
+            "species": self.evo.species.name,
+            "points": self.evo.points,
+            "history": self.evo.history,
+            "tree": {
+                tid: {"progress": t.progress, "unlocked": t.unlocked}
+                for tid, t in self.evo.tree.traits.items()
+            }
+        }
+    
+    def _deserialize_game(self, data):
+        self.turns = data.get("turns", 0)
+        self.max_turns = data.get("max_turns", self.max_turns)
+        self.mode = GameMode[data.get("mode", "TUTORIAL")]
+        self.mode_config = data.get("mode_config", self.mode_config)
+        self.hunger_rate = data.get("hunger_rate", self.hunger_rate)
+        self.thirst_rate = data.get("thirst_rate", self.thirst_rate)
+        self.event_chance = data.get("event_chance", self.event_chance)
+        self.injury_chance = data.get("injury_chance", self.injury_chance)
+        self.stranger_chance = data.get("stranger_chance", self.stranger_chance)
+        self.strangers_accepted = data.get("strangers_accepted", 0)
+        self.strangers_rejected = data.get("strangers_rejected", 0)
+        self.strangers_killed = data.get("strangers_killed", 0)
+        self.apex_predator_kills = set(data.get("apex_predator_kills", []))
+        self.achievements = data.get("achievements", [])
+        self.online_chat = data.get("online_chat", [])
+        self.running = data.get("running", True)
+        self.clan = Clan()
+        clan_data = data.get("clan", {})
+        self.clan.name = clan_data.get("name", "Клан предків")
+        self.clan.generation = clan_data.get("generation", 0)
+        self.clan.total_members = clan_data.get("total_members", 0)
+        self.clan.total_deaths = clan_data.get("total_deaths", 0)
+        self.clan.tool_level = clan_data.get("tool_level", 0)
+        self.clan.food_storage = clan_data.get("food_storage", 50)
+        self.clan.water_storage = clan_data.get("water_storage", 50)
+        self.clan.herbs_storage = clan_data.get("herbs_storage", 3)
+        self.clan.discoveries = clan_data.get("discoveries", [])
+        self.clan.chronicle = clan_data.get("chronicle", [])
+        self.clan.current_year = clan_data.get("current_year", -10_000_000)
+        self.clan.materials = clan_data.get("materials", {})
+        self.clan.crafted_items = clan_data.get("crafted_items", {})
+        self.clan.members = [self._deserialize_hominid(h) for h in clan_data.get("members", [])]
+        self.world = World()
+        world_data = data.get("world", {})
+        self.world.biome = Biome[world_data.get("biome", "JUNGLE")]
+        self.world.weather = world_data.get("weather", "ясно")
+        self.world.time = world_data.get("time", "ранок")
+        self.world.day = world_data.get("day", 1)
+        self.world.season = Season[world_data.get("season", "WET")]
+        self.world.season_days = world_data.get("season_days", 0)
+        self.world.survival_timer = world_data.get("survival_timer", 0)
+        self.world.drought_timer = world_data.get("drought_timer", 0)
+        self.evo = EvolutionEngine(self.clan)
+        evo_data = data.get("evo", {})
+        self.evo.species = Species[evo_data.get("species", "PROCONSUL")]
+        self.evo.points = evo_data.get("points", 0)
+        self.evo.history = evo_data.get("history", [])
+        for tid, trait in evo_data.get("tree", {}).items():
+            if tid in self.evo.tree.traits:
+                self.evo.tree.traits[tid].progress = trait.get("progress", 0.0)
+                self.evo.tree.traits[tid].unlocked = trait.get("unlocked", False)
+        return True
+    
+    def _deserialize_hominid(self, data):
+        gender = Gender[data.get("gender", "MALE")]
+        m = Hominid(data.get("name", "Unknown"), age=data.get("age", 20), gender=gender, is_player=data.get("is_player", False))
+        m.health = data.get("health", 100)
+        m.energy = data.get("energy", 100)
+        m.hunger = data.get("hunger", 0)
+        m.thirst = data.get("thirst", 0)
+        m.fatigue = data.get("fatigue", 0)
+        m.alive = data.get("alive", True)
+        m.morale = data.get("morale", 100)
+        m.strength = data.get("strength", 3)
+        m.speed = data.get("speed", 3)
+        m.intelligence = data.get("intelligence", 3)
+        m.skills = {Skill[k]: v for k, v in data.get("skills", {}).items() if k in Skill.__members__}
+        m.injuries = [Injury[k] for k in data.get("injuries", []) if k in Injury.__members__]
+        m.role = data.get("role")
+        m.experience = data.get("experience", 0)
+        m.children = data.get("children", 0)
+        m.discoveries = data.get("discoveries", [])
+        m.father_name = data.get("father_name")
+        m.pregnant = data.get("pregnant", False)
+        m.pregnancy_timer = data.get("pregnancy_timer", 0)
+        m.partner_name = data.get("partner_name")
+        self._deserialize_hominid_brain(m, data.get("brain", {}))
+        return m
+    
+    def _deserialize_hominid_brain(self, m, data):
+        for tid, trait in data.get("traits", {}).items():
+            if tid in m.brain.traits:
+                m.brain.traits[tid].progress = trait.get("progress", 0.0)
+                m.brain.traits[tid].unlocked = trait.get("unlocked", False)
+    
+    def _show_neighbors_panel(self):
+        if self.mode != GameMode.ONLINE:
+            return
+        print("🧭 СОСІДИ")
+        if self.remote_clans:
+            names = sorted(self.remote_clans.keys())[:4]
+            for idx, name in enumerate(names, 1):
+                payload = self.remote_clans[name]
+                print(f"   [{idx}] {name}: чл.{payload.get('members', 0)} | 🍖{payload.get('food', 0)} | 💧{payload.get('water', 0)} | 🌿{payload.get('herbs', 0)}")
+                print(f"     ↳ {payload.get('biome', '—')} / {payload.get('season', '—')} / хід {payload.get('turn', 0)}")
+                print(f"     • Введіть n{idx} або ім'я {name}, щоб вибрати цього сусіда")
+        else:
+            print("   • Сусідів поки немає")
+        print("   • Можна обмінюватись ресурсами або запускати спільні події")
+
+    def _show_online_turn_panel(self):
+        if self.mode != GameMode.ONLINE:
+            return
+        print("\n📢 СОБИТТЯ / СОСІДИ / ОБМІН")
+        print("-" * 70)
+        if self.pending_trade_offer:
+            print("  • Є нова пропозиція обміну")
+        if self.pending_joint_event:
+            print("  • Є нова спільна подія")
+        if self.remote_clans:
+            print("  • Сусіди:")
+            for idx, name in enumerate(sorted(self.remote_clans.keys())[:5], 1):
+                payload = self.remote_clans[name]
+                print(f"    [{idx}] {name} | 🍖{payload.get('food', 0)} | 💧{payload.get('water', 0)} | 🌿{payload.get('herbs', 0)}")
+        else:
+            print("  • Сусідів поки немає")
+        print("  • Міні-лента чату:")
+        recent_messages = self.online_chat[-6:]
+        if recent_messages:
+            for msg in recent_messages:
+                author = msg.get("author", "Система")
+                text = msg.get("text", "")
+                prefix = "🔔" if msg.get("system", False) else "💬"
+                print(f"    {prefix} {author}: {text}")
+        else:
+            print("    • Поки немає повідомлень")
+        print("  • Швидкі дії: [t] обмін [e] подія [c] чат [n1] сусід [name] сусід")
+
+    def _show_trade_offer_screen(self, payload):
+        print("\n" + "═" * 70)
+        print("🤝 ПРЕДЛОЖЕННЯ ОБМІНУ")
+        print("═" * 70)
+        print(f"Клан {payload.get('from_clan', 'сусід')} пропонує:")
+        print(f"  • Дати: {self._resource_label(payload.get('offer_resource'))} x{payload.get('offer_amount', 0)}")
+        print(f"  • Отримати: {self._resource_label(payload.get('request_resource'))} x{payload.get('request_amount', 0)}")
+        print("\n[1] Прийняти по умовах")
+        print("[2] Змінити умови")
+        print("[3] Відхилити")
+
+    def _show_joint_event_screen(self, neighbor_name, event_name, effect, auto=False):
+        print("\n" + "═" * 70)
+        print(f"🤝 СПІЛЬНА ПОДІЯ З {neighbor_name}")
+        print("═" * 70)
+        print(f"Подія: {event_name}")
+        print("Наслідки:")
+        if effect.get("food"):
+            print(f"  • 🍖 Їжі: +{effect['food']}")
+        if effect.get("water"):
+            print(f"  • 💧 Води: +{effect['water']}")
+        if effect.get("herbs"):
+            print(f"  • 🌿 Трав: +{effect['herbs']}")
+        if effect.get("morale"):
+            print(f"  • 😄 Мораль: +{effect['morale']}")
+        if effect.get("energy"):
+            print(f"  • ⚡ Енергія: +{effect['energy']}")
+        if effect.get("exp"):
+            print(f"  • 🏅 Досвід: +{effect['exp']}")
+        if effect.get("evo_points"):
+            print(f"  • 🧬 Очки еволюції: +{effect['evo_points']}")
+        if effect.get("evo_trait"):
+            print(f"  • 🧠 Риса еволюції: {effect['evo_trait']} (+{effect.get('evo_amount', 0.2)})")
+        if effect.get("tech_level"):
+            print(f"  • 🔧 Рівень знарядь: +{effect['tech_level']}")
+        if effect.get("discovery"):
+            print(f"  • 🔍 Відкриття: {effect['discovery']}")
+        if not auto:
+            input("Натисни Enter, щоб продовжити...")
+
+    def show_status(self):
+        p = self.clan.player
+        if not p: return
+        print("\n" + "═" * 70)
+        print(f"🧬 {self.evo.species.display} | Покоління {self.clan.generation + 1}")
+        print(f"🎮 {self.mode.value} | Хід {self.turns}/{self.max_turns}")
+        if self.clan.injured_members:
+            print(f"⚠️ Поранених: {len(self.clan.injured_members)}")
+        else:
+            print("✅ Клан здоровий")
+        if self.clan.pregnant_members:
+            print(f"🤰 Вагітних: {len(self.clan.pregnant_members)}")
+        print("-" * 70)
+        print(self.world.describe())
+        print("-" * 70)
+        print(p.stats())
+        print("-" * 70)
+        print(f"� Клан: {self.clan.name}")
+        print(f"�👪 {len(self.clan.alive_members)} живих (♂{len(self.clan.male_members)} ♀{len(self.clan.female_members)})")
+        print(f"📦 🍖{self.clan.food_storage} 💧{self.clan.water_storage} 🌿{self.clan.herbs_storage}")
+        print(f"🔧 Знаряддя {self.clan.tool_level}/5 | 🧬 {self.evo.tree.unlocked_count()}/{self.evo.tree.total()}")
+        print(f"📈 Прогрес: {self.evo.tree.progress():.1f}%")
+        if self.mode == GameMode.ONLINE:
+            self._show_neighbors_panel()
+        if self.mode == GameMode.SURVIVAL and self.strangers_accepted > 0:
+            print(f"🤝 Прийнято чужинців: {self.strangers_accepted}")
+        print("═" * 70)
+    
+    def _handle_stranger(self):
+        """Подія: Чужинець просить притулку — для всіх режимів."""
+        if random.random() > self.stranger_chance * 2:
+            return
+        
+        print("\n" + "=" * 60)
+        print("🧑‍🤝‍🧑 ЧУЖИНЕЦЬ ПРОСИТЬ ПРИТУЛКУ!")
+        print("=" * 60)
+        
+        stranger_gender = random.choice([Gender.MALE, Gender.FEMALE])
+        stranger_name = random.choice(
+            self.clan.MALE_NAMES if stranger_gender == Gender.MALE else self.clan.FEMALE_NAMES
+        )
+        
+        print(f"\n{stranger_gender.value} {stranger_name} стоїть на краю території.")
+        print("Він/вона голодний(а) і просить прийняти в клан.")
+        print()
+        print(" [1] 🤝 ПРИЙНЯТИ — +1 член клану, -10 їжі")
+        print(" [2] 🚫 ПРОГНАТИ — він/вона піде")
+        
+        if self.mode == GameMode.SURVIVAL:
+            print(" [3] 💀 ВБИТИ — +20 їжі, але мораль клану впаде")
+        
+        choice = input("➤ ").strip()
+        
+        if choice == "1":
+            age = random.randint(16, 40)
+            stranger = self.clan.add_member(stranger_name, stranger_gender, age=age)
+            stranger.health = random.randint(40, 70)
+            stranger.hunger = random.randint(50, 80)
+            stranger.thirst = random.randint(50, 80)
+            self.clan.food_storage = max(0, self.clan.food_storage - 10)
+            self.strangers_accepted += 1
+            print(f"\n✅ {stranger_name} приєднався до клану!")
+            self.clan.add_chronicle(f"🤝 Прийнято чужинця {stranger_name}")
+        
+        elif choice == "2":
+            self.strangers_rejected += 1
+            print(f"\n🚫 {stranger_name} пішов геть...")
+            self.clan.add_chronicle(f"🚫 Прогнано чужинця {stranger_name}")
+        
+        elif choice == "3" and self.mode == GameMode.SURVIVAL:
+            self.strangers_killed += 1
+            self.clan.food_storage += 20
+            for m in self.clan.alive_members:
+                m.morale = max(0, m.morale - 15)
+            print(f"\n💀 {stranger_name} вбито... +20 їжі, але мораль впала.")
+            self.clan.add_chronicle(f"💀 Вбито чужинця {stranger_name}")
+        
+        else:
+            print("❌ Невірно. Чужинець пішов.")
+        
+        input("Натисни Enter...")
+    
+    def action_forage(self):
+        p = self.clan.player or self.clan.alive_members[0]
+        mod = self.world.forage_mod()
+        
+        # Використовуємо налаштування режиму
+        forage_chance = getattr(self, 'forage_chance', 0.7)
+        food_mult = getattr(self, 'food_mult', 1.0)
+        
+        print(f"\n🍖 Пошук їжі (x{mod:.1f})...")
+        time.sleep(0.3)
+        
+        if random.random() < forage_chance * mod:
+            material = self._find_craft_material()
+            if material:
+                self.clan.materials[material] = self.clan.materials.get(material, 0) + 1
+                print(f"   🪵 Знайдено матеріал: {material}")
+                self.clan.add_chronicle(f"🪵 Знайдено матеріал: {material}")
+                p.gain_exp(3)
+                self.world.advance()
+                self._tick()
+                return
+            ft, a_min, a_max = self.world.HARVEST[self.world.biome]
+            amt = int(random.randint(a_min, a_max) * mod * food_mult)
+            p.eat(amt)
+            self.clan.food_storage += amt // 2
+            p.gain_exp(amt // 4)
+            r = p.brain.advance("motor", 0.08) or p.brain.advance("sensory", 0.08)
+            if r and r in self.evo.tree.traits:
+                print(f"   ⚡ {self.evo.tree.traits[r].name}")
+            self.evo.points += 2
+            print(f"✅ Знайдено: {ft} ({amt})")
+        else:
+            print("❌ Нічого нема")
+        
+        self.world.advance()
+        self._tick()
+    
+    def action_water(self):
+        print("\n💧 Пошук води...")
+        time.sleep(0.3)
+        ch = 0.9 if self.world.biome in [Biome.RIVER, Biome.JUNGLE] else 0.5
+        if random.random() < ch:
+            for m in self.clan.alive_members:
+                m.drink()
+            self.clan.water_storage += 15
+            
+            if self.mode == GameMode.SURVIVAL and random.random() < 0.05:
+                print("   ☠️ Вода виявилась отруйною!")
+                for m in self.clan.alive_members:
+                    if random.random() < 0.3:
+                        m.take_damage(10, "отруєної води")
+                        if Injury.POISONED not in m.injuries:
+                            m.injuries.append(Injury.POISONED)
+            
+            print("✅ Воду знайдено")
+        else:
+            print("❌ Води нема")
+        self.world.advance()
+        self._tick()
+    
+    def action_rest(self):
+        p = self.clan.player or self.clan.alive_members[0]
+        print(f"\n😴 Відпочинок...")
+        time.sleep(0.3)
+        for _ in range(2):
+            r = p.rest()
+            if r: print(f"   {r}")
+        
+        if p.pregnant:
+            p.pregnancy_timer -= 1
+            p.energy -= 5
+            print(f"   🤰 До пологів: {p.pregnancy_timer} ходів")
+        
+        print(f"⚡{p.energy}/100 😫{p.fatigue}/100")
+        
+        if self.mode == GameMode.TUTORIAL and self.turns < 5:
+            print("\n💡 ПІДКАЗКА: Відпочинок лікує легкі травми (укуси, подряпини).")
+        
+        self.world.advance()
+        self._tick()
+    
+    def action_explore(self):
+        p = self.clan.player or self.clan.alive_members[0]
+        print(f"\n🔍 Дослідження {self.world.biome.value}...")
+        time.sleep(0.5)
+
+        prey_choices = [p_ for p_ in self.PASSIVE_PREY if self.world.biome in p_["biomes"]]
+        if prey_choices and random.random() < 0.3:
+            animal = random.choice(prey_choices)
+            amount = max(10, animal["food"] + random.randint(-3, 3))
+            self.clan.food_storage += amount
+            self.clan.add_chronicle(f"🏹 Полювання: {animal['name']} (+{amount} їжі)")
+            print(f"   🐾 Ви зустріли {animal['name']} і здобули 🍖{amount} їжі")
+            p.gain_exp(amount // 4)
+            self.evo.points += 3
+            self.world.advance()
+            self._tick()
+            return
+
+        finds = [
+            ("Кремінь", lambda: setattr(self.clan, 'tool_level', min(5, self.clan.tool_level + 1))),
+            ("Лікувальні трави 🌿", lambda: setattr(self.clan, 'herbs_storage', self.clan.herbs_storage + 3)),
+            ("Цілюща грязь", lambda: [setattr(m, 'health', min(100, m.health + 10)) for m in self.clan.alive_members if m.injuries]),
+            ("Нове місце", lambda: None),
+        ]
+        
+        if self.mode == GameMode.TUTORIAL:
+            finds.append(("Багато ягід 🍓", lambda: setattr(self.clan, 'food_storage', self.clan.food_storage + 20)))
+            finds.append(("Чисте джерело 💧", lambda: setattr(self.clan, 'water_storage', self.clan.water_storage + 20)))
+        
+        nm, eff = random.choice(finds)
+        print(f"   🍀 {nm}")
+        eff()
+        r = p.brain.advance("cognitive", 0.15) or p.brain.advance("sensory", 0.15)
+        if r and r in self.evo.tree.traits:
+            print(f"   ⚡ {self.evo.tree.traits[r].name}")
+        p.gain_exp(random.randint(5, 15))
+        p.discoveries += 1
+        self.evo.points += 3
+        if nm not in self.clan.discoveries:
+            self.clan.discoveries.append(nm)
+            self.clan.add_chronicle(f"🔍 {nm}")
+        self.world.advance()
+        self._tick()
+    
+    def action_move(self):
+        av = World.TRANSITIONS.get(self.world.biome, [])
+        if not av:
+            print("❌ Нікуди"); return
+        
+        print("\n🗺️  Напрямки:")
+        for i, b in enumerate(av, 1): print(f"  [{i}] {b.value}")
+        print("  [0] Назад")
+        c = input("➤ ").strip()
+        if c == "0": return
+        try:
+            idx = int(c) - 1
+            if 0 <= idx < len(av):
+                tgt = av[idx]; old = self.world.biome
+                if self.world.move_to(tgt):
+                    print(f"🚶 {old.value} → {tgt.value}")
+                    self.clan.add_chronicle(f"🚶 Перехід у {tgt.value}")
+                    
+                    if self.mode == GameMode.SURVIVAL and random.random() < 0.2:
+                        print("   🐍 Під час переходу хтось постраждав!")
+                        victim = random.choice(self.clan.alive_members)
+                        dmg = random.randint(5, 15)
+                        victim.take_damage(dmg, "нещасного випадку")
+                else: print("❌ Не вдалося")
+        except: print("❌ Невірно")
+        self._tick()
+    
+    def action_reproduce(self):
+        p = self.clan.player or self.clan.alive_members[0]
+        
+        print("\n" + "=" * 60)
+        print("💕 НЕАРОНИ")
+        print("=" * 60)
+        print(f"Ваш персонаж: {p.gender_symbol} {p.name}")
+        
+        if not p.is_adult:
+            print("❌ Занадто молодий(а)!"); input("Натисни Enter..."); return
+        
+        if p.gender == Gender.FEMALE and p.pregnant:
+            print("❌ Уже вагітна!"); input("Натисни Enter..."); return
+        
+        if p.health < 50:
+            print("❌ Занадто слабкий(а)!"); input("Натисни Enter..."); return
+        
+        if p.gender == Gender.MALE:
+            partners = [m for m in self.clan.female_members if m.alive and m != p and m.is_fertile and not m.pregnant]
+            label = "жінок"
+        else:
+            partners = [m for m in self.clan.male_members if m.alive and m != p and m.is_fertile]
+            label = "чоловіків"
+        
+        if not partners:
+            print(f"❌ Нема відповідних {label} у клані!"); input("Натисни Enter..."); return
+        
+        print(f"\nДоступні партнери ({label}):")
+        for i, m in enumerate(partners, 1):
+            print(f"  [{i}] {m.gender_symbol} {m.name} (❤️{m.health} ⚡{m.energy})")
+        print("  [0] Відміна")
+        
+        choice = input("➤ ").strip()
+        if choice == "0": return
+        
+        try:
+            idx = int(choice) - 1
+            if 0 <= idx < len(partners):
+                partner = partners[idx]
+                self._perform_reproduction(p, partner)
+        except:
+            print("❌ Невірний вибір")
+            input("Натисни Enter...")
+    
+    def _perform_reproduction(self, p, partner):
+        if not p.alive or not partner.alive:
+            print("❌ Партнер мертвий!")
+            return
+        
+        print(f"\n💕 {p.name} і {partner.name} неаронять...")
+        time.sleep(0.5)
+        
+        success_chance = 0.6 + (p.health + partner.health) / 200 + self.clan.food_storage / 500
+        success_chance = min(0.95, success_chance)
+        
+        if random.random() < success_chance:
+            if p.gender == Gender.FEMALE:
+                mother = p; father = partner
+            else:
+                mother = partner; father = p
+            
+            mother.pregnant = True
+            mother.pregnancy_timer = random.randint(3, 6)
+            mother.partner_name = father.name
+            
+            print(f"✅ {mother.name} завагітніла!")
+            print(f"   🤰 Пологи через {mother.pregnancy_timer} ходів")
+            print(f"   👶 Батько: {father.name}")
+            
+            p.energy -= 20; partner.energy -= 20
+            self.clan.food_storage = max(0, self.clan.food_storage - 5)
+            self.clan.add_chronicle(f"💕 {p.name} і {partner.name} неаронили")
+            
+            r = p.brain.advance("social", 0.15) or partner.brain.advance("social", 0.15)
+            if r and r in self.evo.tree.traits:
+                print(f"   ⚡ Нейрон: {self.evo.tree.traits[r].name}")
+        else:
+            print("❌ Не вийшло. Потрібно більше ресурсів і здоров'я.")
+        
+        self.world.advance()
+        self._tick()
+    
+    def _process_births(self):
+        for m in list(self.clan.members):
+            if m.alive and m.pregnant:
+                m.pregnancy_timer -= 1
+                if m.pregnancy_timer <= 0:
+                    self._give_birth(m)
+    
+    def _give_birth(self, mother):
+        if mother.health < 30:
+            print(f"❌ {mother.name} надто слабка для пологів! Втрата дитини.")
+            mother.health -= 15
+            mother.pregnant = False
+            mother.morale = max(0, mother.morale - 30)
+            self.clan.add_chronicle(f"💔 {mother.name} втратила дитину")
+            return
+        
+        num_children = random.choices([1, 2, 3], weights=[40, 40, 20])[0]
+        
+        if self.clan.food_storage < num_children * 3:
+            num_children = max(1, self.clan.food_storage // 3)
+            if num_children == 0:
+                print(f"❌ {mother.name} не змогла народити — нема їжі!")
+                mother.pregnant = False
+                mother.health -= 10
+                self.clan.add_chronicle(f"💔 {mother.name} втратила дитину (голод)")
+                return
+        
+        if mother.health < 50 and random.random() < 0.3:
+            num_children = 1
+            mother.health -= 20
+            print(f"⚠️ Ускладнення! Народилася 1 дитина")
+        
+        print(f"\n🤰 {mother.name} народила {num_children} дитинчат!")
+        
+        father_name = mother.partner_name or "Невідомий"
+        
+        for _ in range(num_children):
+            child_gender = random.choice([Gender.MALE, Gender.FEMALE])
+            child_name = random.choice(self.clan.MALE_NAMES if child_gender == Gender.MALE else self.clan.FEMALE_NAMES)
+            
+            child = self.clan.add_member(child_name, child_gender, age=0)
+            child.health = random.randint(60, 90)
+            child.father_name = father_name
+            
+            father = None
+            for m in self.clan.members:
+                if m.name == mother.partner_name and m.alive:
+                    father = m; break
+            
+            if father:
+                child.strength = (mother.strength + father.strength) // 2 + random.randint(-2, 2)
+                child.speed = (mother.speed + father.speed) // 2 + random.randint(-2, 2)
+                child.intelligence = (mother.intelligence + father.intelligence) // 2 + random.randint(-1, 1)
+                for parent in [mother, father]:
+                    for tid, tr in parent.brain.traits.items():
+                        if tr.unlocked and random.random() < 0.25:
+                            child.brain.traits[tid].unlocked = True
+            else:
+                child.strength = mother.strength + random.randint(-2, 2)
+                child.speed = mother.speed + random.randint(-2, 2)
+                child.intelligence = mother.intelligence + random.randint(-1, 1)
+            
+            print(f"   • {child.gender_symbol} {child_name} 💪{child.strength} 🏃{child.speed} 🧠{child.intelligence}")
+        
+        mother.health -= 15
+        mother.energy -= 30
+        mother.children += num_children
+        mother.pregnant = False
+        mother.partner_name = None
+        mother.morale = min(100, mother.morale + 20)
+        self.clan.food_storage = max(0, self.clan.food_storage - num_children * 5)
+        self.clan.add_chronicle(f"🤰 {mother.name} народила {num_children} дитинчат")
+    
+    def _auto_reproduce(self):
+        if self.clan.food_storage < 10 or self.clan.water_storage < 5:
+            return
+        
+        males = [m for m in self.clan.male_members if m.is_fertile and m.alive and m.health > 50]
+        females = [m for m in self.clan.female_members if m.is_fertile and m.alive and not m.pregnant and m.health > 50]
+        
+        if not males or not females:
+            return
+        
+        chance = 0.15 + (self.clan.food_storage + self.clan.water_storage) / 1000
+        chance = min(0.4, chance)
+        
+        if random.random() < chance:
+            male = random.choice(males)
+            female = random.choice(females)
+            
+            if male.hunger < 80 and female.hunger < 80 and male.thirst < 80 and female.thirst < 80:
+                female.pregnant = True
+                female.pregnancy_timer = random.randint(3, 6)
+                female.partner_name = male.name
+                male.energy -= 15
+                female.energy -= 15
+                self.clan.food_storage = max(0, self.clan.food_storage - 3)
+                self.clan.add_chronicle(f"💕 {male.name} і {female.name} неаронили")
+                
+                print(f"\n💕 {male.gender_symbol} {male.name} і {female.gender_symbol} {female.name} неаронять!")
+                print(f"   🤰 Вагітність: {female.pregnancy_timer} ходів")
+                
+                r = male.brain.advance("social", 0.1) or female.brain.advance("social", 0.1)
+                if r and r in self.evo.tree.traits:
+                    print(f"   ⚡ {self.evo.tree.traits[r].name}")
+                
+                self.world.advance()
+    
+    def action_evolution(self):
+        print("\n" + "=" * 60); print("🧬 ЕВОЛЮЦІЯ"); print("=" * 60)
+        print(f"Вид: {self.evo.species.display}")
+        print(f"Прогрес: {self.evo.tree.progress():.1f}%")
+        print(f"Риси: {self.evo.tree.unlocked_count()}/{self.evo.tree.total()}")
+        print("-" * 60); print(self.evo.tree.summary()); print("-" * 60)
+        ready, nxt, fail = self.evo.check()
+        if ready and nxt:
+            print(f"\n⭐ ГОТОВО до {nxt.display}!")
+            if input("Здійснити стрибок? (y/n): ").strip().lower() == 'y':
+                res, _ = self.evo.leap(); print(f"\n{res}"); time.sleep(2)
+        elif nxt:
+            print(f"\n❌ Потрібно для {nxt.display}:")
+            for f in fail: print(f"   • {f}")
+        else: print("\n✅ МАКСИМУМ!")
+        input("Натисни Enter...")
+    
+    def action_clan(self):
+        print("\n" + "─" * 60); print("👪 КЛАН"); print("─" * 60)
+        for m in self.clan.alive_members:
+            pl = " 🎮" if m.is_player else ""
+            inj = " 🩹" if m.injuries else ""
+            preg = " 🤰" if m.pregnant else ""
+            print(f"  {m.gender_symbol} {m.name}{pl}{inj}{preg} | ❤️{m.health} ⚡{m.energy} | {m.age_group}")
+        print("─" * 60)
+        print(f"👑 Назва: {self.clan.name}")
+        print(f"♂ Чоловіків: {len(self.clan.male_members)} | ♀ Жінок: {len(self.clan.female_members)}")
+        print(f"🤰 Вагітних: {len(self.clan.pregnant_members)}")
+        if self.mode == GameMode.SURVIVAL:
+            print(f"🤝 Прийнято чужинців: {self.strangers_accepted}")
+            print(f"🚫 Прогнано: {self.strangers_rejected}")
+            if self.strangers_killed > 0:
+                print(f"💀 Вбито: {self.strangers_killed}")
+        print(f"📦 🍖{self.clan.food_storage} 💧{self.clan.water_storage} 🌿{self.clan.herbs_storage}")
+        input("Натисни Enter...")
+
+    def _apply_resource_delta(self, attr, delta):
+        current = getattr(self.clan, attr, 0)
+        setattr(self.clan, attr, max(0, current + delta))
+
+    def _resource_label(self, resource_choice):
+        return {"1": "🍖 їжа", "2": "💧 вода", "3": "🌿 трави"}.get(resource_choice, "ресурс")
+
+    def _resource_delta(self, resource_choice, amount):
+        if resource_choice == "1":
+            self._apply_resource_delta("food_storage", amount)
+        elif resource_choice == "2":
+            self._apply_resource_delta("water_storage", amount)
+        elif resource_choice == "3":
+            self._apply_resource_delta("herbs_storage", amount)
+
+    def _can_afford_resource(self, resource_choice, amount):
+        if resource_choice == "1":
+            return self.clan.food_storage >= amount
+        if resource_choice == "2":
+            return self.clan.water_storage >= amount
+        if resource_choice == "3":
+            return self.clan.herbs_storage >= amount
+        return False
+
+    def _apply_trade_result(self, payload):
+        offer_resource = payload.get("offer_resource")
+        offer_amount = payload.get("offer_amount", 0)
+        request_resource = payload.get("request_resource")
+        request_amount = payload.get("request_amount", 0)
+        if payload.get("from_clan") == self.clan.name:
+            if not self._can_afford_resource(offer_resource, offer_amount):
+                return False
+            self._resource_delta(offer_resource, -offer_amount)
+            self._resource_delta(request_resource, request_amount)
+            return True
+        if payload.get("to_clan") == self.clan.name:
+            if not self._can_afford_resource(request_resource, request_amount):
+                return False
+            self._resource_delta(request_resource, -request_amount)
+            self._resource_delta(offer_resource, offer_amount)
+            return True
+        return False
+
+    def _trigger_neighbor_trade(self, neighbor_name=None, trade_mode=None, offer_resource=None, offer_amount=None, request_resource=None, request_amount=None, auto=False):
+        if not self.remote_clans:
+            print("⚪ Немає сусідів для обміну")
+            return False
+
+        if neighbor_name is None:
+            neighbor_name = input("З яким кланом обмін? (назва): ").strip()
+        if neighbor_name not in self.remote_clans:
+            print("❌ Такого сусіда не знайдено")
+            return False
+
+        if trade_mode is None:
+            print("Що робимо? [1] Дати ресурс [2] Взяти ресурс")
+            trade_mode = input("➤ ").strip()
+        if trade_mode not in {"1", "2"}:
+            print("❌ Невірний вибір")
+            return False
+
+        if offer_resource is None:
+            print("Ваш ресурс: [1] їжа [2] вода [3] трави")
+            offer_resource = input("➤ ").strip()
+        if request_resource is None:
+            print("Що хочете отримати: [1] їжа [2] вода [3] трави")
+            request_resource = input("➤ ").strip()
+        if offer_resource == request_resource:
+            print("❌ Обидва ресурси не можуть бути однаковими")
+            return False
+
+        if offer_amount is None:
+            try:
+                offer_amount = int(input("Скільки віддаєте: ").strip() or "0")
+            except ValueError:
+                print("❌ Невірна кількість")
+                return False
+        if request_amount is None:
+            try:
+                request_amount = int(input("Скільки хочете отримати: ").strip() or "0")
+            except ValueError:
+                print("❌ Невірна кількість")
+                return False
+
+        if offer_amount <= 0 or request_amount <= 0:
+            print("❌ Кількість має бути більше нуля")
+            return False
+
+        if not self._can_afford_resource(offer_resource, offer_amount):
+            print(f"❌ Недостатньо {self._resource_label(offer_resource)}")
+            return False
+
+        label = f"{self._resource_label(offer_resource)} x{offer_amount}"
+        payload = {
+            "type": "neighbor_trade_offer",
+            "from_clan": self.clan.name,
+            "to_clan": neighbor_name,
+            "offer_resource": offer_resource,
+            "offer_amount": offer_amount,
+            "request_resource": request_resource,
+            "request_amount": request_amount,
+            "trade_mode": trade_mode,
+        }
+        self._broadcast_network_payload(payload)
+        self._add_chat_message("Система", f"{self.clan.name} запропонував {neighbor_name} {label} у обмін", system=True)
+        if not auto:
+            print(f"✅ Пропозиція обміну відправлена до {neighbor_name}")
+        return True
+
+    def _apply_joint_event_effect(self, neighbor_name, event_name, effect, auto=False, broadcast=True):
+        self._show_joint_event_screen(neighbor_name, event_name, effect, auto=auto)
+        if effect.get("food"):
+            self._apply_resource_delta("food_storage", effect["food"])
+        if effect.get("water"):
+            self._apply_resource_delta("water_storage", effect["water"])
+        if effect.get("herbs"):
+            self._apply_resource_delta("herbs_storage", effect["herbs"])
+        if effect.get("morale"):
+            for m in self.clan.alive_members:
+                m.morale = min(100, m.morale + effect["morale"])
+        if effect.get("evo_points"):
+            self.evo.points += effect["evo_points"]
+        if effect.get("exp"):
+            p = self.clan.player or self.clan.alive_members[0]
+            if p:
+                p.gain_exp(effect["exp"])
+        if effect.get("energy"):
+            for m in self.clan.alive_members:
+                m.energy = min(100, m.energy + effect["energy"])
+        if effect.get("evo_trait"):
+            self.evo.tree.advance(effect["evo_trait"], amount=effect.get("evo_amount", 0.2))
+        if effect.get("tech_level"):
+            self.clan.tool_level = min(5, self.clan.tool_level + effect["tech_level"])
+        if effect.get("discovery") and effect["discovery"] not in self.clan.discoveries:
+            self.clan.discoveries.append(effect["discovery"])
+
+        self.clan.add_chronicle(f"🤝 Спільна подія з {neighbor_name}: {event_name}")
+        self._add_chat_message("Система", f"Клан {self.clan.name} узгодив {event_name} з {neighbor_name}", system=True)
+        if self.network_connected and broadcast:
+            self._broadcast_network_payload({
+                "type": "joint_event",
+                "from_clan": self.clan.name,
+                "neighbor": neighbor_name,
+                "event": event_name,
+                "effect": effect,
+                "auto": auto,
+            })
+        print("✅ Спільна подія відбулася")
+
+    def _trigger_neighbor_event(self, neighbor_name=None, auto=False):
+        if not self.remote_clans:
+            return False
+
+        if neighbor_name is None:
+            neighbor_name, _ = random.choice(list(self.remote_clans.items()))
+        elif neighbor_name not in self.remote_clans:
+            print("❌ Такого сусіда не знайдено")
+            return False
+
+        event_templates = [
+            ("спільна розвідка", {"food": 18, "herbs": 2, "morale": 10, "evo_points": 6, "exp": 12, "evo_trait": "cooperation", "evo_amount": 0.25, "tech_level": 1}),
+            ("збір трав біля стоянки", {"herbs": 5, "morale": 14, "energy": 8, "evo_points": 4, "evo_trait": "teaching", "evo_amount": 0.2, "tech_level": 1}),
+            ("обмін знаннями", {"food": 10, "water": 8, "morale": 12, "exp": 16, "evo_trait": "planning", "evo_amount": 0.22, "discovery": "Спільні знання"}),
+        ]
+        event_name, effect = random.choice(event_templates)
+        if not auto:
+            print(f"\n🤝 {neighbor_name} запропонував {event_name}.")
+            print(" [1] Погодитись  [2] Відмовитись")
+            choice = input("➤ ").strip()
+            if choice != "1":
+                print("⏭️ Подію відкладено")
+                return False
+
+        self._apply_joint_event_effect(neighbor_name, event_name, effect, auto=auto)
+        return True
+
+    def _handle_pending_trade_offer(self):
+        if not self.pending_trade_offer:
+            return False
+        payload = self.pending_trade_offer
+        self.pending_trade_offer = None
+        self._show_trade_offer_screen(payload)
+        choice = input("➤ ").strip()
+        if choice in {"1", "y", "Y"}:
+            offer_resource = payload.get("request_resource")
+            offer_amount = payload.get("request_amount")
+            request_resource = payload.get("offer_resource")
+            request_amount = payload.get("offer_amount")
+            if self._apply_trade_result({
+                "from_clan": self.clan.name,
+                "to_clan": payload.get("from_clan"),
+                "offer_resource": offer_resource,
+                "offer_amount": offer_amount,
+                "request_resource": request_resource,
+                "request_amount": request_amount,
+            }):
+                self._add_chat_message("Система", f"{self.clan.name} погодив обмін з {payload.get('from_clan')}", system=True)
+                self._broadcast_network_payload({
+                    "type": "neighbor_trade_result",
+                    "from_clan": self.clan.name,
+                    "to_clan": payload.get("from_clan"),
+                    "offer_resource": offer_resource,
+                    "offer_amount": offer_amount,
+                    "request_resource": request_resource,
+                    "request_amount": request_amount,
+                })
+            else:
+                self._add_chat_message("Система", f"{self.clan.name} не зміг погодити обмін з {payload.get('from_clan')}", system=True)
+                self._broadcast_network_payload({
+                    "type": "neighbor_trade_declined",
+                    "from_clan": payload.get("from_clan"),
+                    "to_clan": self.clan.name,
+                })
+        elif choice == "2":
+            print("Ваш ресурс для віддачі: [1] їжа [2] вода [3] трави")
+            offer_resource = input("➤ ").strip()
+            print("Скільки віддаєте:")
+            offer_amount = int(input("➤ ").strip() or "0")
+            print("Що хочете отримати: [1] їжа [2] вода [3] трави")
+            request_resource = input("➤ ").strip()
+            print("Скільки хочете отримати:")
+            request_amount = int(input("➤ ").strip() or "0")
+            if offer_amount > 0 and request_amount > 0 and offer_resource != request_resource:
+                if self._apply_trade_result({
+                    "from_clan": self.clan.name,
+                    "to_clan": payload.get("from_clan"),
+                    "offer_resource": offer_resource,
+                    "offer_amount": offer_amount,
+                    "request_resource": request_resource,
+                    "request_amount": request_amount,
+                }):
+                    self._add_chat_message("Система", f"{self.clan.name} погодив обмін з {payload.get('from_clan')} на власних умовах", system=True)
+                    self._broadcast_network_payload({
+                        "type": "neighbor_trade_result",
+                        "from_clan": self.clan.name,
+                        "to_clan": payload.get("from_clan"),
+                        "offer_resource": offer_resource,
+                        "offer_amount": offer_amount,
+                        "request_resource": request_resource,
+                        "request_amount": request_amount,
+                    })
+                else:
+                    self._add_chat_message("Система", f"{self.clan.name} не зміг погодити обмін з {payload.get('from_clan')}", system=True)
+            else:
+                self._add_chat_message("Система", f"{self.clan.name} відхилив обмін з {payload.get('from_clan')}", system=True)
+        else:
+            self._add_chat_message("Система", f"{self.clan.name} відхилив обмін з {payload.get('from_clan')}", system=True)
+            self._broadcast_network_payload({
+                "type": "neighbor_trade_declined",
+                "from_clan": payload.get("from_clan"),
+                "to_clan": self.clan.name,
+            })
+        return True
+
+    def _handle_pending_joint_event(self):
+        if not self.pending_joint_event:
+            return False
+        data = self.pending_joint_event
+        self.pending_joint_event = None
+        self._apply_joint_event_effect(data["neighbor_name"], data["event_name"], data["effect"], auto=data.get("auto", False), broadcast=False)
+        return True
+
+    def _handle_online_panel_command(self, act):
+        if self.mode != GameMode.ONLINE or not isinstance(act, str):
+            return False
+
+        cmd = act.strip()
+        if not cmd:
+            return False
+
+        lowered = cmd.lower()
+        if lowered in {"chat", "c"}:
+            self.action_chat()
+            return True
+
+        if lowered.startswith("neighbor "):
+            name = cmd[len("neighbor "):].strip()
+            self.action_neighbors(selected_neighbor=name)
+            return True
+        if lowered.startswith("n "):
+            name = cmd[2:].strip()
+            self.action_neighbors(selected_neighbor=name)
+            return True
+
+        if lowered.startswith("trade "):
+            name = cmd[len("trade "):].strip()
+            self._trigger_neighbor_trade(neighbor_name=name)
+            return True
+        if lowered.startswith("give "):
+            name = cmd[len("give "):].strip()
+            self._trigger_neighbor_trade(neighbor_name=name, trade_mode="1")
+            return True
+        if lowered.startswith("take "):
+            name = cmd[len("take "):].strip()
+            self._trigger_neighbor_trade(neighbor_name=name, trade_mode="2")
+            return True
+        if lowered.startswith("event "):
+            name = cmd[len("event "):].strip()
+            self._trigger_neighbor_event(neighbor_name=name)
+            return True
+
+        names = sorted(self.remote_clans.keys())
+        if lowered in {name.lower() for name in names}:
+            self.action_neighbors(selected_neighbor=cmd)
+            return True
+
+        if lowered.startswith("n") and lowered[1:].isdigit():
+            idx = int(lowered[1:]) - 1
+            if 0 <= idx < len(names):
+                self.action_neighbors(selected_neighbor=names[idx])
+                return True
+
+        return False
+
+    def _maybe_auto_neighbor_trade(self):
+        if not self.remote_clans or not self.network_connected:
+            return
+        if random.random() < 0.18 and self.turns % 6 == 0:
+            neighbor_name = random.choice(list(self.remote_clans.keys()))
+            offer_resource = random.choice(["1", "2", "3"])
+            request_resource = random.choice(["1", "2", "3"])
+            offer_amount = random.randint(4, 10)
+            request_amount = max(1, offer_amount // 2)
+            self._trigger_neighbor_trade(
+                neighbor_name=neighbor_name,
+                trade_mode="1",
+                offer_resource=offer_resource,
+                offer_amount=offer_amount,
+                request_resource=request_resource,
+                request_amount=request_amount,
+                auto=True,
+            )
+
+    def _maybe_auto_neighbor_event(self):
+        if not self.remote_clans:
+            return
+        if self.turns % 7 == 0 and random.random() < 0.35:
+            neighbor_name = random.choice(list(self.remote_clans.keys()))
+            self._trigger_neighbor_event(neighbor_name=neighbor_name, auto=True)
+
+    def action_neighbors(self, selected_neighbor=None):
+        if self.mode != GameMode.ONLINE:
+            print("\n🧭 Екран сусідів доступний лише в режимі Онлайн")
+            input("Натисни Enter...")
+            return
+
+        print("\n" + "═" * 70)
+        print("🧭 СОСІДНІ КЛАНИ")
+        print("═" * 70)
+        if self.network_connected and self.remote_clans:
+            names = sorted(self.remote_clans.keys())
+            if selected_neighbor is None:
+                for name in names:
+                    payload = self.remote_clans[name]
+                    print(f"  • {name}")
+                    print(f"    Чл.: {payload.get('members', 0)} | 🍖{payload.get('food', 0)} | 💧{payload.get('water', 0)} | 🌿{payload.get('herbs', 0)}")
+                    print(f"    Покоління: {payload.get('generation', 0)} | Вид: {payload.get('species', '—')}")
+                    print(f"    Світ: {payload.get('biome', '—')} | Сезон: {payload.get('season', '—')} | Хід: {payload.get('turn', 0)}")
+            else:
+                if selected_neighbor not in self.remote_clans:
+                    print("❌ Такого сусіда не знайдено")
+                    input("Натисни Enter...")
+                    return
+                payload = self.remote_clans[selected_neighbor]
+                print(f"  • {selected_neighbor}")
+                print(f"    Чл.: {payload.get('members', 0)} | 🍖{payload.get('food', 0)} | 💧{payload.get('water', 0)} | 🌿{payload.get('herbs', 0)}")
+                print(f"    Покоління: {payload.get('generation', 0)} | Вид: {payload.get('species', '—')}")
+                print(f"    Світ: {payload.get('biome', '—')} | Сезон: {payload.get('season', '—')} | Хід: {payload.get('turn', 0)}")
+        else:
+            print("  Немає активних сусідів у мережі")
+            input("Натисни Enter...")
+            return
+
+        print("-" * 70)
+        print(" [1] Дати ресурс")
+        print(" [2] Взяти ресурс")
+        print(" [3] Спільна подія")
+        print(" [4] Оновити статус")
+        print(" [0] Назад")
+        choice = input("➤ ").strip()
+        if choice == "1":
+            self._trigger_neighbor_trade(neighbor_name=selected_neighbor or None, trade_mode="1")
+        elif choice == "2":
+            self._trigger_neighbor_trade(neighbor_name=selected_neighbor or None, trade_mode="2")
+        elif choice == "3":
+            self._trigger_neighbor_event(neighbor_name=selected_neighbor or None)
+        elif choice == "4":
+            self._broadcast_clan_status()
+            print("✅ Статус оновлено")
+        input("Натисни Enter...")
+    
+    def _append_chat_message(self, author, text, system=False):
+        self.online_chat.append({"author": author, "text": text, "system": system})
+        if len(self.online_chat) > 20:
+            self.online_chat = self.online_chat[-20:]
+
+    def _broadcast_network_payload(self, payload):
+        if self.network_server is not None:
+            self.network_server.broadcast(payload)
+        elif self.network_client is not None:
+            self._send_network_payload(payload)
+
+    def _add_chat_message(self, author, text, system=False):
+        self._append_chat_message(author, text, system)
+        self._broadcast_network_payload({"type": "chat", "message": {"author": author, "text": text, "system": system}})
+
+    def _send_network_payload(self, payload):
+        if self.network_client is None:
+            return False
+        try:
+            self.network_client.sendall((json.dumps(payload, ensure_ascii=False) + "\n").encode("utf-8"))
+            return True
+        except Exception:
+            self.network_connected = False
+            self.network_client = None
+            return False
+
+    def _handle_network_message(self, payload):
+        msg_type = payload.get("type")
+        if msg_type == "chat":
+            msg = payload.get("message") or payload
+            self._append_chat_message(msg.get("author", "Система"), msg.get("text", ""), msg.get("system", False))
+        elif msg_type == "clan_status":
+            name = payload.get("clan_name", "Невідомий")
+            self.remote_clans[name] = payload
+        elif msg_type == "sync":
+            for msg in payload.get("messages", []):
+                self._append_chat_message(msg.get("author", "Система"), msg.get("text", ""), msg.get("system", False))
+        elif msg_type == "neighbor_trade_offer":
+            self._append_chat_message("Система", f"{payload.get('from_clan', 'Сусід')} запропонував обмін ресурсами", True)
+            if payload.get("to_clan") == self.clan.name:
+                self.pending_trade_offer = payload
+                self._add_chat_message("Система", f"Отримано пропозицію обміну від {payload.get('from_clan')}. Підтвердіть у наступному ході", system=True)
+        elif msg_type == "neighbor_trade_result":
+            if self._apply_trade_result(payload):
+                self._add_chat_message("Система", f"Обмін з {payload.get('from_clan')} завершено", system=True)
+            else:
+                self._add_chat_message("Система", f"Обмін з {payload.get('from_clan')} не відбувся через нестачу ресурсів", system=True)
+        elif msg_type == "neighbor_trade_declined":
+            self._add_chat_message("Система", f"{payload.get('to_clan')} відхилив обмін", system=True)
+        elif msg_type == "joint_event":
+            self.pending_joint_event = {
+                "neighbor_name": payload.get("neighbor") or payload.get("from_clan"),
+                "event_name": payload.get("event", "спільна подія"),
+                "effect": payload.get("effect", {}),
+                "auto": payload.get("auto", False),
+            }
+            self._append_chat_message("Система", f"{payload.get('from_clan', 'Сусід')} узгодив спільну подію: {payload.get('event', 'подія')}", True)
+
+    def _network_receive_loop(self):
+        while self.network_connected and self.network_client is not None:
+            try:
+                data = self.network_client.recv(4096)
+                if not data:
+                    break
+                text = data.decode("utf-8", "ignore")
+                for line in text.splitlines():
+                    if not line:
+                        continue
+                    try:
+                        payload = json.loads(line)
+                    except Exception:
+                        continue
+                    self._handle_network_message(payload)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+        self.network_connected = False
+        self.network_client = None
+
+    def _discover_lan_server(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.settimeout(2.0)
+        try:
+            sock.sendto(b"ANCESTORS_DISCOVER", ("255.255.255.255", 5001))
+            while True:
+                data, addr = sock.recvfrom(4096)
+                try:
+                    payload = json.loads(data.decode("utf-8", "ignore"))
+                except Exception:
+                    continue
+                if payload.get("type") == "server_info":
+                    return payload.get("host"), payload.get("port"), payload.get("clan_name")
+        except socket.timeout:
+            return None, None, None
+        finally:
+            sock.close()
+
+    def _setup_online_network(self):
+        print("\n🌐 РЕАЛЬНЕ ПІДКЛЮЧЕННЯ ДО ОНЛАЙН-ЧАТУ")
+        print(" [1] Створити сервер")
+        print(" [2] Авто-підключення по LAN")
+        print(" [3] Підключитися вручну")
+        print(" [4] Без мережі")
+        choice = input("➤ ").strip()
+        if choice == "1":
+            host = input("IP сервера (Enter=127.0.0.1): ").strip() or "127.0.0.1"
+            port = int(input("Порт (Enter=5000): ").strip() or "5000")
+            self.network_server = NetworkChatServer(host=host, port=port, server_name=self.clan.name)
+            self.network_server.start()
+            self.network_connected = True
+            print(f"✅ Сервер запущено на {host}:{port}")
+            self._add_chat_message("Система", f"Сервер запущено на {host}:{port}", system=True)
+            self._broadcast_clan_status()
+        elif choice == "2":
+            host, port, clan_name = self._discover_lan_server()
+            if host and port:
+                print(f"✅ Знайдено сервер {clan_name or 'Unknown'} на {host}:{port}")
+                try:
+                    self.network_client = socket.create_connection((host, port), timeout=3)
+                    self.network_client.settimeout(0.5)
+                    self.network_connected = True
+                    self.network_thread = threading.Thread(target=self._network_receive_loop, daemon=True)
+                    self.network_thread.start()
+                    self._send_network_payload({"type": "join", "author": self.clan.name})
+                    self._broadcast_clan_status()
+                    self._add_chat_message("Система", f"Підключено до {clan_name or host}:{port}", system=True)
+                except Exception as e:
+                    self.network_connected = False
+                    self.network_client = None
+                    print(f"❌ Не вдалося підключитися: {e}")
+            else:
+                print("⚪ Сервер у LAN не знайдено. Спробуйте підключитися вручну.")
+        elif choice == "3":
+            host = input("Адреса сервера (Enter=127.0.0.1): ").strip() or "127.0.0.1"
+            port = int(input("Порт (Enter=5000): ").strip() or "5000")
+            try:
+                self.network_client = socket.create_connection((host, port), timeout=3)
+                self.network_client.settimeout(0.5)
+                self.network_connected = True
+                self.network_thread = threading.Thread(target=self._network_receive_loop, daemon=True)
+                self.network_thread.start()
+                self._send_network_payload({"type": "join", "author": self.clan.name})
+                self._broadcast_clan_status()
+                print(f"✅ Підключено до {host}:{port}")
+                self._add_chat_message("Система", f"Підключено до {host}:{port}", system=True)
+            except Exception as e:
+                self.network_connected = False
+                self.network_client = None
+                print(f"❌ Не вдалося підключитися: {e}")
+        else:
+            print("⚪ Онлайн-режим працюватиме в локальному режимі без мережі")
+
+    def _build_clan_status_payload(self):
+        return {
+            "type": "clan_status",
+            "clan_name": self.clan.name,
+            "members": len(self.clan.alive_members),
+            "total_members": self.clan.total_members,
+            "food": self.clan.food_storage,
+            "water": self.clan.water_storage,
+            "herbs": self.clan.herbs_storage,
+            "generation": self.clan.generation + 1,
+            "species": self.evo.species.display,
+            "turn": self.turns,
+            "mode": self.mode.value,
+            "biome": self.world.biome.value,
+            "season": self.world.season.value,
+            "weather": self.world.weather,
+            "time": self.world.time,
+            "day": self.world.day,
+        }
+
+    def _broadcast_clan_status(self):
+        if self.network_server is not None:
+            self.network_server.broadcast(self._build_clan_status_payload())
+        elif self.network_client is not None:
+            self._send_network_payload(self._build_clan_status_payload())
+
+    def _shutdown_network(self):
+        if self.network_server is not None:
+            self.network_server.stop()
+            self.network_server = None
+        if self.network_client is not None:
+            try:
+                self.network_client.close()
+            except Exception:
+                pass
+            self.network_client = None
+        self.network_connected = False
+
+    def _emit_online_chat_message(self):
+        if self.mode != GameMode.ONLINE or random.random() > 0.35:
+            return
+        authors = [
+            "Клан Журавлів",
+            "Клан Сірого Вітру",
+            "Клан Вогню",
+            "Клан Тіні",
+            "Клан Річки",
+            "Клан Дерева",
+        ]
+        texts = [
+            "Ми бачимо ваші вогні з далечини.",
+            "Чи є у вас запаси води?",
+            "Ми обміняємося ресурсами за безпеку.",
+            "Підтримуємо зв'язок через стоянку.",
+            "Наш клан ділиться новими знахідками.",
+            "Сусідні клани уважно стежать за вашими діями.",
+        ]
+        self._add_chat_message(random.choice(authors), random.choice(texts))
+
+    def action_chat(self):
+        if self.mode != GameMode.ONLINE:
+            print("\n💬 Онлайн-чат доступний тільки в режимі Онлайн")
+            input("Натисни Enter...")
+            return
+
+        print("\n" + "═" * 70)
+        print(f"💬 ОНЛАЙН-ЧАТ | {self.clan.name}")
+        print("═" * 70)
+        if not self.online_chat:
+            print("  Поки що немає повідомлень.")
+        else:
+            for msg in self.online_chat[-8:]:
+                prefix = "🖥️" if msg.get("system") else "💬"
+                print(f"  {prefix} {msg['author']}: {msg['text']}")
+        print("-" * 70)
+        print(" [1] Надіслати повідомлення")
+        print(" [2] Оновити")
+        print(" [3] Підключити/запустити мережу")
+        print(" [0] Назад")
+        if self.network_connected:
+            print("\n🌐 Стан кланів:")
+            if self.remote_clans:
+                for name, payload in self.remote_clans.items():
+                    print(f"  • {name} | Чл.: {payload.get('members', 0)} | 🍖{payload.get('food', 0)} | 💧{payload.get('water', 0)} | 🌿{payload.get('herbs', 0)}")
+            else:
+                print("  • Ніхто ще не передав статус")
+            print(f"  • Ваш клан: {self.clan.name} | Чл.: {len(self.clan.alive_members)} | 🍖{self.clan.food_storage} | 💧{self.clan.water_storage} | 🌿{self.clan.herbs_storage}")
+        choice = input("➤ ").strip()
+        if choice == "1":
+            text = input("Ваше повідомлення: ").strip()
+            if text:
+                self._add_chat_message(self.clan.name, text)
+                print("✅ Повідомлення надіслано")
+            else:
+                print("❌ Порожнє повідомлення")
+        elif choice == "2":
+            self._emit_online_chat_message()
+            print("✅ Чат оновлено")
+        elif choice == "3":
+            self._setup_online_network()
+            print("✅ Стан мережі оновлено")
+        input("Натисни Enter...")
+
+    def action_tools(self):
+        p = self.clan.player or self.clan.alive_members[0]
+        print(f"\n🔨 {p.name} працює над інструментами та крафтом...")
+        print(" [1] Підвищити рівень знаряддя")
+        print(" [2] Крафт рецепту")
+        print(" [3] Інвентар матеріалів")
+        print(" [0] Назад")
+        choice = input("➤ ").strip()
+        if choice == "1":
+            time.sleep(0.3)
+            ch = 0.5 + p.skills[Skill.TOOLMAKING] * 0.05
+            if self.clan.tool_level < 5 and random.random() < ch:
+                self.clan.tool_level += 1
+                p.skills[Skill.TOOLMAKING] = min(10, p.skills[Skill.TOOLMAKING] + 1)
+                r = p.brain.advance("motor", 0.2)
+                if r and r in self.evo.tree.traits:
+                    print(f"   ⚡ {self.evo.tree.traits[r].name}")
+                print(f"✅ Знаряддя: {self.clan.tool_level}/5")
+                self.clan.add_chronicle(f"🔧 Знаряддя {self.clan.tool_level}")
+            elif self.clan.tool_level >= 5:
+                print("✅ Максимум")
+            else:
+                print("❌ Невдача")
+        elif choice == "2":
+            self._craft_menu()
+        elif choice == "3":
+            self._show_materials()
+        else:
+            print("🔙 Повернення")
+        self.world.advance(); self._tick()
+
+    def _show_materials(self):
+        print("\n📦 Інвентар матеріалів:")
+        if not self.clan.materials:
+            print("  Немає матеріалів")
+        else:
+            for name, count in sorted(self.clan.materials.items()):
+                if count > 0:
+                    print(f"  {name}: {count}")
+        print("\n🛠️ Виготовлені вироби:")
+        if not self.clan.crafted_items:
+            print("  Немає")
+        else:
+            for name, count in sorted(self.clan.crafted_items.items()):
+                if count > 0:
+                    print(f"  {name}: {count}")
+        input("Натисни Enter...")
+
+    def _craft_menu(self):
+        print("\n🧰 Рецепти крафта")
+        for idx, rec in enumerate(self.CRAFT_RECIPES, 1):
+            chance = int(self._craft_success_chance(rec) * 100)
+            print(f" [{idx}] {rec['name']} — {rec['desc']} (Шанс: {chance}% )")
+            print(f"      Інгредієнти: {self._format_recipe_ingredients(rec)}")
+        print(" [0] Назад")
+        choice = input("➤ ").strip()
+        if choice == "0":
+            return
+        try:
+            idx = int(choice) - 1
+            if 0 <= idx < len(self.CRAFT_RECIPES):
+                self._craft_recipe(self.CRAFT_RECIPES[idx])
+            else:
+                print("❌ Невірний вибір")
+        except ValueError:
+            print("❌ Невірний вибір")
+
+    def _craft_recipe(self, recipe):
+        ingredients = []
+        for req in recipe['ingredients']:
+            count = req['count']
+            if recipe.get('reduced_with_dexterity') and req['name'] in ("Стангерия шерстистая", "Сухая ветка", "Колючий кустарник"):
+                count = max(1, count // 2)
+            ingredients.append({**req, 'count': count})
+        if not self._has_recipe_ingredients(ingredients):
+            print("❌ Недостатньо матеріалів для цього рецепту")
+            return
+        chance = self._craft_success_chance(recipe)
+        print(f"\n🔧 Починаємо крафт: {recipe['name']} ({recipe['rounds']} кроків)")
+        print(f"   Шанс успіху: {int(chance * 100)}%")
+        self._consume_recipe_ingredients(ingredients)
+        if random.random() > chance:
+            print("💥 Крафт провалився через нестачу навичок або інструментів")
+            self.clan.add_chronicle(f"💥 Провалений крафт: {recipe['name']}")
+            return
+        if not self._crafting_minigame(recipe['rounds']):
+            print("💥 Предмет розвалився під час крафту")
+            self.clan.add_chronicle(f"💥 Провалений крафт: {recipe['name']}")
+            return
+        self.clan.crafted_items[recipe['name']] = self.clan.crafted_items.get(recipe['name'], 0) + 1
+        self.clan.add_chronicle(f"🧰 Створено: {recipe['name']}")
+        print(f"✅ {recipe['name']} готовий!")
+        self._apply_craft_effect(recipe['effect'])
+
+    def _has_recipe_ingredients(self, ingredients):
+        for req in ingredients:
+            if not self._find_material(req['name'], req['count']):
+                return False
+        return True
+
+    def _consume_recipe_ingredients(self, ingredients):
+        for req in ingredients:
+            self._remove_material(req['name'], req['count'])
+
+    def _find_material(self, name, count):
+        if isinstance(name, list):
+            return any(self._find_material(item, count) for item in name)
+        if self.clan.materials.get(name, 0) >= count:
+            return True
+        if self.clan.crafted_items.get(name, 0) >= count:
+            return True
+        return False
+
+    def _remove_material(self, name, count):
+        if isinstance(name, list):
+            for item in name:
+                if self._find_material(item, count):
+                    self._remove_material(item, count)
+                    return
+            return
+        if self.clan.materials.get(name, 0) >= count:
+            self.clan.materials[name] -= count
+            return
+        if self.clan.crafted_items.get(name, 0) >= count:
+            self.clan.crafted_items[name] -= count
+            return
+
+    def _crafting_minigame(self, rounds):
+        for step in range(1, rounds + 1):
+            print(f"\nКрок {step}/{rounds}: натисніть Enter, щоб почати утримувати кнопку")
+            input("➤ ")
+            print("Утримуйте ключ, чекайте звукового сигналу...")
+            delay = random.uniform(1.5, 3.0)
+            time.sleep(delay)
+            print("🔔 Сигнал! Відпустіть Enter якнайшвидше!")
+            start = time.monotonic()
+            input("➤ ")
+            reaction = time.monotonic() - start
+            if reaction < 0.1 or reaction > 1.2:
+                return False
+            print(f"   Реакція: {reaction:.2f} с")
+        return True
+
+    def _apply_craft_effect(self, effect):
+        if effect == 'sleep_site':
+            self.sleep_site = True
+            print("🏠 Місце для сну збудовано. Відпочинок тепер сильніше відновлює сили.")
+        elif effect == 'living_hedge':
+            self.living_hedge = True
+            print("🌿 Жива огорожа готова. Хижаки більше не заходять сюди.")
+        elif effect == 'thorn_hedge':
+            self.thorn_hedge = True
+            print("🌵 Колючі зарості збудовані. Захист від хижаків підвищено.")
+        else:
+            self.clan.materials[effect] = self.clan.materials.get(effect, 0) + 1
+
+    def _format_recipe_ingredients(self, recipe):
+        parts = []
+        for req in recipe['ingredients']:
+            name = req['name']
+            if isinstance(name, list):
+                name = "/".join(name)
+            parts.append(f"{req['count']}× {name}")
+        return ", ".join(parts)
+
+    def _craft_success_chance(self, recipe):
+        p = self.clan.player or self.clan.alive_members[0]
+        base = 0.45 + min(1.0, p.skills[Skill.TOOLMAKING] * 0.05)
+        dex = self.evo.tree.traits.get('dexterity')
+        if dex and dex.unlocked:
+            base += 0.10
+        return min(0.95, base)
+
+    def _find_craft_material(self):
+        options = {
+            Biome.JUNGLE: ["Стангерия шерстистая", "Хвощ", "Алоэ", "Обсидиан", "Яйцо питона", "Яйцо орела-скомороха"],
+            Biome.SAVANNA: ["Сухая ветка", "Гранит", "Базальт", "Колючий кустарник", "Стангерия шерстистая", "Плод баобаба"],
+            Biome.WOODLAND: ["Сухая ветка", "Хвощ", "Алоэ", "Обсидиан", "Кокос", "Яйцо питона"],
+            Biome.RIVER: ["Кокос", "Гранит", "Африканская куркума", "Яйцо пеликана", "Яйцо крокодила", "Метеорит"],
+        }
+        choices = options.get(self.world.biome, [])
+        if not choices or random.random() > 0.6:
+            return None
+        return random.choice(choices)
+
+    def action_heal(self):
+        injured = self.clan.injured_members
+        if not injured:
+            print("\n🩺 У клані нема поранених! Усі здорові!"); input("Натисни Enter..."); return
+        
+        print("\n" + "=" * 60); print("🩺 ЛІКУВАННЯ КЛАНУ"); print("=" * 60)
+        print(f"🌿 Запас трав: {self.clan.herbs_storage}")
+        print(f"🍖 Запас їжі: {self.clan.food_storage}")
+        print(f"💧 Запас води: {self.clan.water_storage}")
+        print("-" * 60)
+        print("Поранені:")
+        for i, m in enumerate(injured, 1):
+            травми = ", ".join(f"{j.value}" for j in m.injuries)
+            print(f"  [{i}] {m.gender_symbol} {m.name} — {травми}")
+        print("-" * 60)
+        print(" [1] 🌿 Лікувати травами [2] 🍖 Нагодувати [3] 💧 Напоїти [4] 🏥 Повний догляд [0] Назад")
+        
+        choice = input("➤ ").strip()
+        if choice == "0": return
+        if choice == "1":
+            if self.clan.herbs_storage <= 0: print("❌ Нема трав!"); input("Натисни Enter..."); return
+            print("Кого лікувати?")
+            for i, m in enumerate(injured, 1): print(f"  [{i}] {m.name}")
+            sub = input("➤ ").strip()
+            try:
+                idx = int(sub)-1
+                if 0 <= idx < len(injured):
+                    patient = injured[idx]
+                    if patient.injuries:
+                        worst = max(patient.injuries, key=lambda x: x.severity)
+                        patient.injuries.remove(worst)
+                        self.clan.herbs_storage -= 1
+                        patient.health = min(100, patient.health+20)
+                        print(f"✅ {patient.name}: {worst.value} вилікувано!")
+            except: pass
+        elif choice == "2":
+            if self.clan.food_storage < 10: print("❌ Потрібно 10 їжі"); input("Натисни Enter..."); return
+            print("Кого годувати?")
+            for i, m in enumerate(injured, 1): print(f"  [{i}] {m.name}")
+            sub = input("➤ ").strip()
+            try:
+                idx = int(sub)-1
+                if 0 <= idx < len(injured):
+                    self.clan.food_storage -= 10
+                    injured[idx].eat(40)
+                    injured[idx].health = min(100, injured[idx].health+15)
+                    print(f"✅ {injured[idx].name}: ❤️{injured[idx].health}")
+            except: pass
+        elif choice == "3":
+            if self.clan.water_storage < 5: print("❌ Потрібно 5 води"); input("Натисни Enter..."); return
+            print("Кого поїти?")
+            for i, m in enumerate(injured, 1): print(f"  [{i}] {m.name}")
+            sub = input("➤ ").strip()
+            try:
+                idx = int(sub)-1
+                if 0 <= idx < len(injured):
+                    self.clan.water_storage -= 5
+                    injured[idx].drink()
+                    injured[idx].health = min(100, injured[idx].health+10)
+                    print(f"✅ {injured[idx].name}: ❤️{injured[idx].health}")
+            except: pass
+        elif choice == "4":
+            if self.clan.herbs_storage < 3: print("❌ Потрібно 3 трави"); input("Натисни Enter..."); return
+            print("Кого лікувати повністю?")
+            for i, m in enumerate(injured, 1): print(f"  [{i}] {m.name} ({len(m.injuries)} травм)")
+            sub = input("➤ ").strip()
+            try:
+                idx = int(sub)-1
+                if 0 <= idx < len(injured):
+                    patient = injured[idx]
+                    if patient.injuries:
+                        count = len(patient.injuries)
+                        patient.injuries.clear()
+                        self.clan.herbs_storage -= 3
+                        patient.health = min(100, patient.health+30)
+                        patient.energy = min(100, patient.energy+20)
+                        print(f"✅ {patient.name}: вилікувано {count} травм!")
+            except: pass
+        input("Натисни Enter...")
+    
+    def action_shelter(self):
+        print("\n" + "=" * 60); print("🏠 СТОЯНКА"); print("=" * 60)
+        print(f"Клан: {len(self.clan.alive_members)} живих")
+        print(f"Запаси: 🍖{self.clan.food_storage} 💧{self.clan.water_storage} 🌿{self.clan.herbs_storage}")
+        print("-" * 60)
+        print(" [1] 🍖 Роздати їжу (по 3/люд) [2] 💧 Роздати воду (по 2/люд)")
+        print(" [3] 🌿 Ліки (-2 трави, +20❤️ всім) [0] Назад")
+        c = input("➤ ").strip()
+        if c == "1":
+            cost = len(self.clan.alive_members)*3
+            if self.clan.food_storage >= cost:
+                for m in self.clan.alive_members: m.eat(15); self.clan.food_storage -= 3
+                print("✅ Їжу роздано")
+            else: print(f"❌ Потрібно {cost} їжі")
+        elif c == "2":
+            cost = len(self.clan.alive_members)*2
+            if self.clan.water_storage >= cost:
+                for m in self.clan.alive_members: m.drink(); self.clan.water_storage -= 2
+                print("✅ Воду роздано")
+            else: print(f"❌ Потрібно {cost} води")
+        elif c == "3":
+            if self.clan.herbs_storage >= 2:
+                self.clan.herbs_storage -= 2
+                for m in self.clan.alive_members: m.health = min(100, m.health+20)
+                print("✅ Ліки! +20❤️ всім")
+                self.clan.add_chronicle("🌿 Ліки для клану")
+            else: print("❌ Потрібно 2 трави")
+        input("Натисни Enter...")
+    
+    def action_log(self):
+        print("\n" + "═" * 70); print("📖 ЛІТОПИС"); print("═" * 70)
+        for i, e in enumerate(self.clan.chronicle[-30:], 1): print(f"  {i}. {e}")
+        print("═" * 70); input("Натисни Enter...")
+    
+    def _tick(self):
+        for m in self.clan.members:
+            if m.alive:
+                m.hunger += random.randint(3, 8) * self.hunger_rate
+                m.thirst += random.randint(3, 7) * self.thirst_rate
+                m.fatigue += random.randint(2, 5)
+                m.apply_penalties()
+        
+        self._auto_reproduce()
+        self._process_births()
+
+        if self.mode == GameMode.ONLINE and self.running:
+            if self.network_connected and self.turns % 2 == 0:
+                self._broadcast_clan_status()
+            if random.random() < 0.25:
+                self._emit_online_chat_message()
+            if self.network_connected and self.turns % 3 == 0:
+                self._broadcast_clan_status()
+            if self.network_connected and self.remote_clans and self.turns % 5 == 0 and random.random() < 0.35:
+                self._maybe_auto_neighbor_event()
+            if self.network_connected and self.remote_clans and self.turns % 6 == 0 and random.random() < 0.18:
+                self._maybe_auto_neighbor_trade()
+        
+        # Події режиму "Чужаки"
+        if getattr(self, 'mode_config', {}).get('name', '').startswith('👽'):
+            self._stranger_event()
+        
+        # Хижаки — залежить від режиму
+        pred_chance = getattr(self, 'predator_chance', 0.08)
+        if self.running and random.random() < pred_chance:
+            self._predator_attack()
+        
+        # Звичайні події
+        if self.running and random.random() < self.event_chance:
+            ev = random.choice(self.EVENTS)
+            print(f"\n📜 {ev['title']}"); print(f"   {ev['desc']}")
+            for i, (txt,_) in enumerate(ev['choices'], 1): print(f"  [{i}] {txt}")
+            c = input("➤ ").strip()
+            try:
+                idx = int(c)-1
+                if 0 <= idx < len(ev['choices']):
+                    _, ef = ev['choices'][idx]
+                    if 'food' in ef: self.clan.food_storage += ef['food']
+                    if 'water' in ef: self.clan.water_storage += ef['water']
+                    if 'morale' in ef:
+                        for m in self.clan.alive_members: m.morale = max(0, min(100, m.morale+ef['morale']))
+                    if 'herbs' in ef: self.clan.herbs_storage += ef['herbs']
+                    self.clan.add_chronicle(f"📜 {ev['title']}: {ev['choices'][idx][0]}")
+                    print("✅ Подію вирішено")
+            except: pass
+
+    def _stranger_event(self):
+        """Подія: чужий гомінід стукає в клан."""
+        if random.random() > 0.12:
+            return
+        
+        stranger_gender = random.choice([Gender.MALE, Gender.FEMALE])
+        stranger_name = random.choice(
+            self.clan.MALE_NAMES if stranger_gender == Gender.MALE else self.clan.FEMALE_NAMES
+        )
+        stranger_str = random.randint(2, 8)
+        stranger_int = random.randint(2, 8)
+        
+        stranger_types = [
+            ("втікач", "Тікає від хижаків. Схоже, що він слабкий, але може бути корисним."),
+            ("воїн", "Сильний та агресивний. Може захистити клан або стати проблемою."),
+            ("старий мудрець", "Старійшина з досвідом. Може навчити клан новому."),
+            ("дитина", "Маленьке дитинча без батьків. Потребує турботи."),
+            ("розвідник", "Прийшов здалеку. Знає про інші території."),
+        ]
+        
+        s_type, s_desc = random.choice(stranger_types)
+        
+        print(f"\n👽 НЕЗНАЙОМЕЦЬ СТУКАЄ В СТОЯНКУ!")
+        print("=" * 60)
+        symbol = "♂" if stranger_gender == Gender.MALE else "♀"
+        print(f"   {symbol} {stranger_name}")
+        print(f"   Тип: {s_type}")
+        print(f"   {s_desc}")
+        print(f"   Сила: {stranger_str}/10 | Інтелект: {stranger_int}/10")
+        print("-" * 60)
+        print("   [1] 🤝 ПРИЙНЯТИ — чужинець приєднається до клану")
+        print("   [2] 🚫 ПРОГНАТИ — чужинець піде, але може образитися")
+        print("   [3] ⚔️ АТАКУВАТИ — відібрати ресурси, але ризик")
+        
+        choice = input("➤ ").strip()
+        
+        if choice == "1":
+            m = self.clan.add_member(stranger_name, stranger_gender, age=random.randint(15, 50))
+            m.strength = stranger_str
+            m.intelligence = stranger_int
+            m.morale = random.randint(40, 70)
+            m.health = random.randint(40, 80)
+            
+            if "воїн" in s_type:
+                m.strength = min(10, stranger_str + 2)
+                print("   ⚔️ Воїн зміцнить оборону клану!")
+            elif "мудрець" in s_type:
+                r = m.brain.advance("cognitive", 0.5) or m.brain.advance("social", 0.5)
+                if r and r in self.evo.tree.traits:
+                    print(f"   🧠 Мудрець навчив: {self.evo.tree.traits[r].name}")
+            elif "дитина" in s_type:
+                m.age = random.randint(5, 12)
+                print("   👶 Дитинча потребує турботи, але виросте корисним членом клану!")
+            
+            self.clan.add_chronicle(f"👽 Прийнято чужинця: {stranger_name}")
+            print(f"✅ {stranger_name} приєднався до клану!")
+            
+            if random.random() < 0.4:
+                gift_food = random.randint(5, 20)
+                gift_herbs = random.randint(0, 3)
+                self.clan.food_storage += gift_food
+                self.clan.herbs_storage += gift_herbs
+                print(f"   🎁 Приніс: 🍖{gift_food} 🌿{gift_herbs}")
+        
+        elif choice == "2":
+            morale_loss = random.randint(-15, -5)
+            for m in self.clan.alive_members:
+                m.morale = max(0, m.morale + morale_loss)
+            print(f"🚫 {stranger_name} прогнано. Мораль клану: {morale_loss}")
+            self.clan.add_chronicle(f"🚫 Прогнано чужинця: {stranger_name}")
+        
+        elif choice == "3":
+            risk = stranger_str / 10
+            if random.random() < 1 - risk:
+                loot_food = random.randint(10, 30)
+                loot_herbs = random.randint(0, 2)
+                self.clan.food_storage += loot_food
+                self.clan.herbs_storage += loot_herbs
+                for m in self.clan.alive_members:
+                    m.morale = min(100, m.morale + 5)
+                print(f"⚔️ Перемога! Здобуто: 🍖{loot_food} 🌿{loot_herbs}")
+                self.clan.add_chronicle(f"⚔️ Атаковано чужинця: {stranger_name}")
+            else:
+                damage = random.randint(10, 30)
+                for m in self.clan.alive_members:
+                    m.health -= damage // len(self.clan.alive_members)
+                for m in self.clan.alive_members:
+                    m.morale = max(0, m.morale - 15)
+                print(f"💥 Поразка! Клан отримав {damage} урону")
+                self.clan.add_chronicle(f"💥 Поразка в сутичці з: {stranger_name}")
+        
+        input("Натисни Enter...")
+
+    def _predator_attack(self):
+        """Атака дикої тварини."""
+        predators = self._choose_wild_threat()
+        pred_name = predators["name"]
+        pred_dmg = predators["damage"]
+        target = random.choice(self.clan.alive_members)
+        
+        print(f"\n🐅 ЗУСТРІЧ З ДИКИМ ТВАРИНАМИ!")
+        print(f"   {pred_name} напав на {target.name}!")
+        print("-" * 40)
+        print("   [1] 🛡️ ЗАХИЩАТИСЯ — дати відсіч")
+        print("   [2] 🏃 ТІКАТИ — уникнути, але втратити ресурси")
+        
+        choice = input("➤ ").strip()
+        won = False
+        if choice == "1" or choice == "":
+            block_chance = 0.4 + len(self.clan.alive_members) * 0.04
+            if random.random() < block_chance:
+                dmg_to_target = pred_dmg // 2
+                target.health -= dmg_to_target
+                print(f"⚔️ Відбито атаку! {target.name} отримав {dmg_to_target} урону")
+                won = True
+            else:
+                target.health -= pred_dmg
+                print(f"💥 Сила ворога прорвала оборону! {target.name} отримав {pred_dmg} урону")
+        else:
+            lost_food = random.randint(5, 20)
+            self.clan.food_storage = max(0, self.clan.food_storage - lost_food)
+            target.health -= pred_dmg // 3
+            print(f"🏃 Втеча! Втрачено 🍖{lost_food} їжі, {target.name} отримав {pred_dmg // 3} урону")
+            won = random.random() < 0.5
+        
+        if target.health <= 0:
+            target.alive = False
+            self.clan.total_deaths += 1
+            print(f"💀 {target.name} загинув!")
+            won = False
+
+        if won:
+            print(f"✅ Ви перемогли {pred_name}!")
+            self.clan.add_chronicle(f"⚔️ Перемога над {pred_name}")
+            if pred_name in [p["name"] for p in self.APEX_PREDATORS]:
+                self.apex_predator_kills.add(pred_name)
+                self._unlock_predator_achievement(pred_name)
+        else:
+            self.clan.add_chronicle(f"🐅 Зустріч з {pred_name}")
+
+    def _choose_wild_threat(self):
+        biome = self.world.biome
+        if random.random() < 0.18:
+            choices = [p for p in self.APEX_PREDATORS if biome in p["biomes"]]
+            if choices:
+                return random.choice(choices)
+        if random.random() < 0.35:
+            choices = [p for p in self.HERBIVORE_THREATS if biome in p["biomes"]]
+            if choices:
+                threat = random.choice(choices)
+                threat = threat.copy(); threat["damage"] += 5
+                return threat
+        if random.random() < 0.6:
+            choices = [p for p in self.MINOR_THREATS if biome in p["biomes"]]
+            if choices:
+                threat = random.choice(choices)
+                threat = threat.copy(); threat["damage"] -= 2
+                return threat
+        choices = [p for p in self.APEX_PREDATORS + self.HERBIVORE_THREATS + self.MINOR_THREATS if biome in p.get("biomes", [])]
+        return random.choice(choices) if choices else random.choice(self.MINOR_THREATS)
+
+    def _unlock_predator_achievement(self, pred_name):
+        achievement = self.PREDATOR_ACHIEVEMENTS.get(pred_name)
+        if achievement and achievement not in self.achievements:
+            self.achievements.append(achievement)
+            print(f"\n🏆 ДОСТИЖЕНИЕ: {achievement} — ви перемогли {pred_name}!")
+            self.clan.add_chronicle(f"🏆 Достижение: {achievement}")
+        self._check_supreme_predator()
+
+    def _check_supreme_predator(self):
+        needed = {p["name"] for p in self.APEX_PREDATORS}
+        if needed.issubset(self.apex_predator_kills) and "Сверххищник" not in self.achievements:
+            self.achievements.append("Сверххищник")
+            print("\n🏆 ДОСТИЖЕНИЕ: Сверххищник — ви перемогли всіх надзвичайних хижаків!")
+            self.clan.add_chronicle("🏆 Достижение: Сверххищник")
+
+    def _check_end(self):
+        if not self.clan.alive_members:
+            print("\n💀 КЛАН ВИМЕР")
+            print(f"📈 Прогрес: {self.evo.tree.progress():.1f}%")
+            print(f"🧬 Розблоковано: {self.evo.tree.unlocked_count()}/{self.evo.tree.total()} ознак")
+            self.running = False; return True
+        
+        if self.mode == GameMode.SURVIVAL and self.turns >= self.max_turns:
+            print("\n☠️ ЧАС ВИЙШОВ!")
+            print(f"🏆 Ви вижили {self.max_turns} днів у дикій природі!")
+            if self.evo.species == Species.HOMO_SAPIENS:
+                print("🧬 Людина розумна досгнута!")
+            self.running = False; return True
+        
+        if self.evo.species == Species.HOMO_SAPIENS:
+            print("\n🧬 ЛЮДИНА РОЗУМНА ДОСЯГНУТА!"); print("🏆 ПЕРЕМОГА!")
+            self.running = False; return True
+        
+        return False
+    
+    def run(self):
+        if os.path.exists(self.save_file):
+            choice = input("🔄 Знайдено збереження. Завантажити? (y/n): ").strip().lower()
+            if choice == "y" and self.load_game():
+                print("✅ Гра завантажена")
+            else:
+                self.setup()
+        else:
+            self.setup()
+        while self.running:
+            if self._check_end(): break
+            if self.turns % 5 == 0 and self.turns > 0:
+                for m in list(self.clan.members):
+                    if m.alive:
+                        m.age_one_year()
+                        if not m.alive:
+                            print(f"\n💀 {m.name} помер від старості")
+                            self.clan.total_deaths += 1
+                            self.clan.add_chronicle(f"💀 Смерть {m.name}")
+                            if m.is_player:
+                                heirs = [x for x in self.clan.alive_members if x.is_adult and x != m]
+                                if heirs:
+                                    np = random.choice(heirs); np.is_player = True
+                                    print(f"🔄 Новий предок: {np.name}")
+                                    self.clan.add_chronicle(f"🔄 Новий предок: {np.name}")
+                                elif self.clan.alive_members:
+                                    self.clan.alive_members[0].is_player = True
+                                    print(f"🔄 Останній: {self.clan.alive_members[0].name}")
+                                else: self.running = False
+            if not self.running: break
+            if self.mode == GameMode.ONLINE:
+                self._handle_pending_trade_offer()
+                self._handle_pending_joint_event()
+            self.show_status()
+            act = self.menu()
+            if act == "q":
+                self._save_before_exit()
+                print("\n🚫 Вихід")
+                break
+            if self.mode == GameMode.ONLINE and self._handle_online_panel_command(act):
+                if act.lower() not in {"chat", "c", "t", "e"}:
+                    self.turns += 1
+                continue
+
+            acts = {
+                "1":self.action_forage,"2":self.action_water,"3":self.action_rest,
+                "4":self.action_explore,"5":self.action_move,"6":self.action_reproduce,
+                "7":self.action_evolution,"8":self.action_clan,"9":self.action_tools,
+                "10":self.action_heal,"11":self.action_shelter,"12":self.action_log,"13":self.action_chat,"14":self.action_neighbors,
+                "s":self.save_game,"l":self.load_from_menu,
+            }
+            if act in acts:
+                acts[act]()
+                if act not in ("8","10","11","12","13","s","l"): self.turns += 1
+            else: print("❌ Невірний вибір!")
+        
+        self._shutdown_network()
+        print("\n" + "="*60); print("📊 ФІНАЛ"); print("="*60)
+        print(f"  Режим: {self.mode.value}")
+        print(f"  Вид: {self.evo.species.display}")
+        print(f"  Поколінь: {self.clan.generation+1}")
+        print(f"  Народжено: {self.clan.total_members}")
+        print(f"  Загинуло: {self.clan.total_deaths}")
+        print(f"  Риси: {self.evo.tree.unlocked_count()}/{self.evo.tree.total()}")
+        print(f"  Запаси: 🍖{self.clan.food_storage} 💧{self.clan.water_storage} 🌿{self.clan.herbs_storage}")
+        if self.mode == GameMode.SURVIVAL:
+            print(f"  Чужинців прийнято: {self.strangers_accepted}")
+            print(f"  Чужинців прогнано: {self.strangers_rejected}")
+            if self.strangers_killed > 0:
+                print(f"  Чужинців вбито: {self.strangers_killed}")
+        if self.achievements:
+            print(f"  Досягнення: {', '.join(self.achievements)}")
+        print("="*60)
+
+# ═══════════════════════════════════════════════
+# VIII. ЗАПУСК
+# ═══════════════════════════════════════════════
+
+if __name__ == "__main__":
+    g = Game()
+    try:
+        g.run()
+    except KeyboardInterrupt:
+        print("\n\n🚫 Вихід")
+    except Exception as e:
+        print(f"\n❌ Помилка: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        print("\nДякую за гру! 🧬")
+          
